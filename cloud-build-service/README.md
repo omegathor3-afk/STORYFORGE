@@ -18,6 +18,8 @@ Required server-side environment variables:
 - STORYFORGE_BUILD_REF: branch containing standalone-apk.yml.
 - Optional GITHUB_REPOSITORY_OWNER and GITHUB_REPOSITORY_NAME.
 
+For Cloudflare R2, create a private bucket and an API token scoped to that bucket. Set `STORYGAME_ALLOWED_HOSTS` to `<ACCOUNT_ID>.r2.cloudflarestorage.com` so the worker accepts only the presigned story archive host. Configure an R2 lifecycle rule to delete objects under `storygames/` after a short retention period.
+
 Run db/schema.sql once against PostgreSQL. Then install dependencies and run npm run typecheck.
 
 ## API

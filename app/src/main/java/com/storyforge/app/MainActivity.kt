@@ -157,8 +157,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                } else if (authError != null && authError != AuthorizationException.AuthorizationCanceled) {
-                    cloudMessage = "فشل تسجيل الدخول: ${authError.errorDescription ?: "خطأ في المصادقة"}"
+                } else if (authError != null) {
+                    cloudMessage = if (result.resultCode == android.app.Activity.RESULT_CANCELED) "تم إلغاء تسجيل الدخول." else "فشل تسجيل الدخول: ${authError.errorDescription ?: "خطأ في المصادقة"}"
                 }
             }
             fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {

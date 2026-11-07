@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const database = db();
     const client = await database.connect();
     const id = randomUUID();
-    const branch = process.env.STORYFORGE_BUILD_REF || "feature/standalone-apk-pipeline";
+    const branch = process.env.STORYFORGE_BUILD_REF || "feature/cloud-build-center";
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
