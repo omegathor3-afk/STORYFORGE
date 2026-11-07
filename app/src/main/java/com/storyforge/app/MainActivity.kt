@@ -277,6 +277,74 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     }
+                                    Divider(color = Color(0xFF343B43))
+                                    Text("خريطة تفرعات القصة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text("اضغط على أي عقدة لفتح المشهد وتعديله. الأسهم توضّح مسار كل اختيار.",
+                                        color = Muted, fontSize = 12.sp)
+                                    current.scenes.forEachIndexed { graphIndex, graphScene ->
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth().clickable { selectedSceneId = graphScene.id },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = if (selectedSceneId == graphScene.id) Color(0xFF292820) else Panel
+                                            ),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                if (selectedSceneId == graphScene.id) 1.5.dp else 0.5.dp,
+                                                if (selectedSceneId == graphScene.id) Gold else Color(0xFF343B43)
+                                            ),
+                                            shape = RoundedCornerShape(14.dp)
+                                        ) {
+                                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text("${graphIndex + 1}", color = Gold, fontWeight = FontWeight.Bold)
+                                                    Spacer(Modifier.width(9.dp))
+                                                    Column(Modifier.weight(1f)) {
+                                                        Text(graphScene.title.ifBlank { "مشهد بلا عنوان" }, fontWeight = FontWeight.Bold)
+                                                        Text("${graphScene.text.length} حرف • ${graphScene.choices.count { it.isNotBlank() }} اختيارات",
+                                                            color = Muted, fontSize = 11.sp)
+                                                    }
+                                                    Text(if (selectedSceneId == graphScene.id) "محدد" else "فتح",
+                                                        color = Gold, fontSize = 11.sp)
+                                                }
+                                                val graphChoices = graphScene.choices.withIndex().filter { it.value.isNotBlank() }
+                                                if (graphChoices.isEmpty()) {
+                                                    val nextScene = current.scenes.getOrNull(graphIndex + 1)
+                                                    Text(
+                                                        if (nextScene != null) "↓ متابعة تلقائية إلى: ${nextScene.title}"
+                                                        else "↓ نهاية القصة",
+                                                        color = Color(0xFF8CBAA5), fontSize = 12.sp
+                                                    )
+                                                } else {
+                                                    graphChoices.forEach { (choiceIndex, choiceText) ->
+                                                        val destination = graphScene.choiceTargets.getOrNull(choiceIndex)
+                                                        val destinationLabel = when {
+                                                            destination == "__END__" -> "نهاية القصة"
+                                                            destination == null -> current.scenes.getOrNull(graphIndex + 1)?.title ?: "نهاية القصة"
+                                                            current.scenes.any { it.id == destination } ->
+                                                                current.scenes.first { it.id == destination }.title
+                                                            else -> "وجهة غير موجودة"
+                                                        }
+                                                        Row(
+                                                            Modifier.fillMaxWidth().background(Ink, RoundedCornerShape(8.dp)).padding(9.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text("↳", color = Gold, fontSize = 17.sp)
+                                                            Spacer(Modifier.width(7.dp))
+                                                            Column(Modifier.weight(1f)) {
+                                                                Text(choiceText, fontSize = 12.sp, maxLines = 2)
+                                                                val condition = graphScene.choiceConditions.getOrNull(choiceIndex).orEmpty()
+                                                                if (condition.isNotBlank()) Text("شرط: $condition", color = Muted, fontSize = 10.sp)
+                                                            }
+                                                            Text("→ $destinationLabel", color = Color(0xFF8CBAA5), fontSize = 11.sp)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (graphIndex < current.scenes.lastIndex) {
+                                            Text("│", color = Color(0xFF65736D), modifier = Modifier.padding(start = 18.dp))
+                                        }
+                                    }
+                                    Divider(color = Color(0xFF343B43))
                                     val scene = current.scenes.firstOrNull { it.id == selectedSceneId }
                                         ?: current.scenes.firstOrNull()
                                     if (scene != null) {
