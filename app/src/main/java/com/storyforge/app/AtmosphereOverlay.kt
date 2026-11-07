@@ -14,12 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import kotlin.math.PI
 import kotlin.math.sin
 
 @Composable
-internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: Modifier = Modifier) {
+internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: Float = 0.72f, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "darkwood-atmosphere")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "drift")
     val active = effects.toSet() + when (theme) {
@@ -30,7 +31,7 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: M
         "frozen" -> setOf("snow", "fog", "wind")
         else -> setOf("fog", "branches", "dead_leaves")
     }
-    Canvas(modifier.fillMaxSize()) {
+    Canvas(modifier.fillMaxSize().graphicsLayer(alpha = intensity.coerceIn(0f, 1f))) {
         val w = size.width; val h = size.height
         drawRect(Brush.verticalGradient(listOf(Color(0x22020708), Color.Transparent, Color(0x66030708))))
         if ("branches" in active || "dead_leaves" in active) {

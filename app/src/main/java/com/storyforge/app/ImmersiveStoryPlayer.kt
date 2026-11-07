@@ -113,7 +113,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
             } else Box(Modifier.fillMaxWidth().height(300.dp).background(
                 Brush.radialGradient(listOf(Color(0xFF24394D), Color(0xFF101723), PlayerNight))))
 
-            AtmosphereOverlay(effects = scene?.atmosphereEffects.orEmpty(), theme = project.visualTheme, modifier = Modifier.fillMaxSize())
+            AtmosphereOverlay(effects = scene?.atmosphereEffects.orEmpty(), theme = project.visualTheme, intensity = scene?.atmosphereIntensity ?: 0.72f, modifier = Modifier.fillMaxSize())
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 17.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

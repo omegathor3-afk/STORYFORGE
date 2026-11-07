@@ -68,7 +68,8 @@ data class StoryScene(
     val dialogues: List<DialogueLine> = emptyList(),
     val choiceTimerSeconds: Int = 0,
     val timeoutChoiceIndex: Int = 0,
-    val atmosphereEffects: List<String> = emptyList()
+    val atmosphereEffects: List<String> = emptyList(),
+    val atmosphereIntensity: Float = 0.72f
 )
 
 data class DialogueLine(
@@ -598,6 +599,21 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
+                                        Spacer(Modifier.height(8.dp))
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("شدة الأجواء", color = Color(0xFFE0C58C), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                            Text("${(scene.atmosphereIntensity * 100).toInt()}%", color = Muted, fontSize = 12.sp)
+                                        }
+                                        Slider(
+                                            value = scene.atmosphereIntensity.coerceIn(0f, 1f),
+                                            onValueChange = { intensity ->
+                                                updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                    if (item.id == scene.id) item.copy(atmosphereIntensity = intensity) else item
+                                                }) }
+                                            },
+                                            valueRange = 0f..1f
+                                        )
+                                        Text("صفر = بدون طبقات جوية، 100٪ = أجواء كثيفة. الإعداد مستقل لكل مشهد.", color = Muted, fontSize = 10.sp)
                                         Divider(color = Color(0xFF343B43))
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically) {
@@ -1558,6 +1574,7 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             s.put("timeoutChoiceIndex", scene.timeoutChoiceIndex.coerceAtLeast(0))
             val atmosphere = JSONArray(); scene.atmosphereEffects.forEach { atmosphere.put(it) }
             s.put("atmosphereEffects", atmosphere)
+            s.put("atmosphereIntensity", scene.atmosphereIntensity.coerceIn(0f, 1f).toDouble())
             val dialogues = JSONArray()
             scene.dialogues.forEach { line ->
                 dialogues.put(JSONObject().put("id", line.id).put("speaker", line.speaker).put("text", line.text))
@@ -1608,6 +1625,7 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 choiceTimerSeconds = s.optInt("choiceTimerSeconds", 0).coerceIn(0, 300),
                 timeoutChoiceIndex = s.optInt("timeoutChoiceIndex", 0).coerceAtLeast(0),
                 atmosphereEffects = s.optJSONArray("atmosphereEffects")?.let { values -> (0 until values.length()).map { k -> values.optString(k) } } ?: emptyList(),
+                atmosphereIntensity = s.optDouble("atmosphereIntensity", 0.72).toFloat().coerceIn(0f, 1f),
                 dialogues = s.optJSONArray("dialogues")?.let { values ->
                     (0 until values.length()).map { k ->
                         val d = values.getJSONObject(k)
