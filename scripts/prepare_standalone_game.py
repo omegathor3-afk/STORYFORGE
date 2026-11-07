@@ -6,15 +6,15 @@ import pathlib
 import re
 import sys
 import struct
+import hashlib
 import urllib.request
 import zipfile
 
 url = os.environ["STORYGAME_URL"].strip()
-title = os.environ["GAME_TITLE"].strip()
+title = os.environ.get("GAME_TITLE", "").strip()
+application_id = os.environ.get("APPLICATION_ID", "").strip()
 if not url.startswith("https://") or len(url) > 2048:
     raise SystemExit("storygame_url must be an HTTPS URL")
-if not title or len(title) > 40:
-    raise SystemExit("game_title must contain 1-40 characters")
 
 request = urllib.request.Request(url, headers={"User-Agent": "STORYFORGE-APK-Builder/1.0"})
 with urllib.request.urlopen(request, timeout=45) as response:
@@ -52,6 +52,18 @@ with zipfile.ZipFile(tmp) as archive:
         raise SystemExit("Unsupported STORYFORGE package version")
     if not isinstance(projects, list) or len(projects) != 1:
         raise SystemExit("A standalone APK must contain exactly one story")
+    if not title:
+        title = str(manifest.get("title", "")).strip()
+    if not title or len(title) > 40:
+        raise SystemExit("Game title must contain 1-40 characters")
+    if not application_id:
+        project_key = str(projects[0].get("id") or manifest.get("projectId") or title)
+        suffix = hashlib.sha256(project_key.encode("utf-8")).hexdigest()[:12]
+        application_id = "com.storyforge.games.g" + suffix
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*){1,5}", application_id):
+        raise SystemExit("Invalid Android application ID")
+    if application_id == "com.storyforge.player":
+        raise SystemExit("Standalone games must use a unique Android application ID")
     projects[0]["title"] = title
     manifest["title"] = title
     manifest["branding"] = manifest.get("branding") or {}
@@ -87,6 +99,10 @@ if icon_url:
     pathlib.Path("player/src/main/res/drawable/game_icon.xml").unlink(missing_ok=True)
     if width != height:
         raise SystemExit("App icon must be square")
+
+with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+    env.write("GAME_TITLE=" + title.replace(chr(10), " ").replace(chr(13), " ") + chr(10))
+    env.write("APPLICATION_ID=" + application_id + chr(10))
 
 tmp.unlink(missing_ok=True)
 print("Validated and embedded standalone story package.")

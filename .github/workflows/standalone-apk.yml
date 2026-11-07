@@ -5,15 +5,15 @@ on:
     inputs:
       storygame_url:
         description: HTTPS download link to one exported .storygame ZIP
-        required: true
+        required: false
         type: string
       game_title:
         description: Name shown under the installed app icon
-        required: true
+        required: false
         type: string
       application_id:
         description: Unique Android package ID (for example com.studio.mygame)
-        required: true
+        required: false
         type: string
       icon_url:
         description: Optional HTTPS link to a square PNG app icon
@@ -31,28 +31,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate build identity
-        shell: bash
-        env:
-          GAME_TITLE: ${{ inputs.game_title }}
-          APPLICATION_ID: ${{ inputs.application_id }}
-        run: |
-          python - <<'PY'
-          import os, re, sys
-          title = os.environ["GAME_TITLE"].strip()
-          package = os.environ["APPLICATION_ID"].strip()
-          if not title or len(title) > 40:
-              sys.exit("Game title must contain 1-40 characters")
-          if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){1,5}", package):
-              sys.exit("Invalid Android application ID")
-          if package == "com.storyforge.player":
-              sys.exit("Standalone games must use a unique application ID")
-          PY
-
       - name: Prepare and validate game package
         env:
           STORYGAME_URL: ${{ inputs.storygame_url }}
           GAME_TITLE: ${{ inputs.game_title }}
+          APPLICATION_ID: ${{ inputs.application_id }}
           ICON_URL: ${{ inputs.icon_url }}
         run: python3 scripts/prepare_standalone_game.py
 
@@ -68,9 +51,6 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build dedicated game APK
-        env:
-          GAME_TITLE: ${{ inputs.game_title }}
-          APPLICATION_ID: ${{ inputs.application_id }}
         run: |
           gradle --no-daemon :player:assembleDebug \
             -PgameApplicationId="$APPLICATION_ID" \
