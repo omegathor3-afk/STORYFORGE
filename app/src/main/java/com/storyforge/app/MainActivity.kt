@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                         relativePath = "storyforge_assets/$projectId/${UUID.randomUUID()}.$ext", mimeType = mime, sceneId = selectedSceneId)
                     val destination = File(filesDir, asset.relativePath)
                     destination.parentFile?.mkdirs()
-                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use(input::copyTo) } ?: error("تعذر قراءة الملف")
+                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use { output -> input.copyTo(output) } } ?: error("تعذر قراءة الملف")
                     updateProject(projectId) { it.copy(assets = it.assets + asset) }
                     Toast.makeText(this@MainActivity, "تمت إضافة الصورة وربطها بالمشهد", Toast.LENGTH_SHORT).show()
                 }.onFailure { Toast.makeText(this@MainActivity, "تعذر استيراد الصورة", Toast.LENGTH_LONG).show() }
@@ -168,7 +168,7 @@ class MainActivity : ComponentActivity() {
                         relativePath = "storyforge_assets/$projectId/${UUID.randomUUID()}.$ext", mimeType = mime, sceneId = selectedSceneId)
                     val destination = File(filesDir, asset.relativePath)
                     destination.parentFile?.mkdirs()
-                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use(input::copyTo) } ?: error("تعذر قراءة الملف")
+                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use { output -> input.copyTo(output) } } ?: error("تعذر قراءة الملف")
                     updateProject(projectId) { it.copy(assets = it.assets + asset) }
                     Toast.makeText(this@MainActivity, "تمت إضافة الملف الصوتي وربطه بالمشهد", Toast.LENGTH_SHORT).show()
                 }.onFailure { Toast.makeText(this@MainActivity, "تعذر استيراد الملف الصوتي", Toast.LENGTH_LONG).show() }
