@@ -192,6 +192,17 @@ class MainActivity : ComponentActivity() {
                 }.onFailure { Toast.makeText(this@MainActivity, "ملف JSON غير صالح أو تعذر قراءته", Toast.LENGTH_LONG).show() }
             }
 
+            val gamePackageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+                if (uri != null) runCatching {
+                    val project = projects.firstOrNull { it.id == selectedId } ?: error("اختر قصة أولاً")
+                    contentResolver.openOutputStream(uri)?.use { output ->
+                        writeStandaloneStoryPackage(output, project, filesDir)
+                    } ?: error("تعذر إنشاء حزمة اللعبة")
+                    Toast.makeText(this@MainActivity, "تم تصدير حزمة اللعبة المستقلة مع الصور والصوت", Toast.LENGTH_LONG).show()
+                }.onFailure {
+                    Toast.makeText(this@MainActivity, "فشل تصدير اللعبة: ${it.message ?: "خطأ غير معروف"}", Toast.LENGTH_LONG).show()
+                }
+            }
             val zipExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
                 if (uri != null) runCatching {
                     contentResolver.openOutputStream(uri)?.use { output ->
@@ -689,6 +700,12 @@ class MainActivity : ComponentActivity() {
                                     Text("معاينة تفاعلية", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                     Text(current.title, color = Muted)
                                     Button(onClick = { showImmersivePlayer = true }, modifier = Modifier.fillMaxWidth()) { Text("✦ ابدأ التجربة السينمائية الغامرة") }
+                                    OutlinedButton(
+                                        onClick = { gamePackageLauncher.launch("${current.title.replace(Regex("[^\\p{L}\\p{N}._-]+"), "_")}.storygame") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { Text("📦 تصدير اللعبة كحزمة مستقلة") }
+                                    Text("الحزمة تشمل بيانات القصة والصور والصوت والغلاف، ويمكن نقلها لجهاز آخر. إنشاء APK مستقل مخصص يحتاج خطوة بناء إضافية.", color = Muted, fontSize = 11.sp)
+
                                     if (showImmersivePlayer) androidx.compose.ui.window.Dialog(onDismissRequest = { showImmersivePlayer = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
                                         ImmersiveStoryPlayer(project = current, filesDir = filesDir, onExit = { showImmersivePlayer = false })
                                     }
@@ -1020,6 +1037,54 @@ private fun EmptyPanel(title: String, subtitle: String) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text(subtitle, color = Muted)
         }
+    }
+}
+
+
+/**
+ * Portable single-game bundle. It deliberately contains only one project and its
+ * referenced media, with a small manifest for a future standalone Android player.
+ */
+internal fun writeStandaloneStoryPackage(output: OutputStream, project: StoryProject, filesDir: File) {
+    val root = File(filesDir, "storyforge_assets").canonicalFile
+    val assets = project.assets.filter { asset ->
+        asset.relativePath.startsWith("storyforge_assets/") &&
+            runCatching {
+                val file = File(filesDir, asset.relativePath).canonicalFile
+                file.isFile && file.path.startsWith(root.path + File.separator)
+            }.getOrDefault(false)
+    }
+    val packagedProject = project.copy(assets = assets)
+    val projectJson = encodeProjects(listOf(packagedProject))
+    val manifest = JSONObject()
+        .put("format", "storyforge-game")
+        .put("formatVersion", 1)
+        .put("playerMinimumVersion", "0.2.0")
+        .put("title", project.title)
+        .put("description", project.description)
+        .put("projectId", project.id)
+        .put("language", "ar")
+        .put("branding", JSONObject()
+            .put("displayName", project.title)
+            .put("introTitle", project.title)
+            .put("introDescription", project.description)
+            .put("coverAssetId", assets.firstOrNull { it.mimeType.startsWith("image/") }?.id ?: JSONObject.NULL))
+        .put("sceneCount", project.scenes.size)
+        .put("assetCount", assets.size)
+    ZipOutputStream(output.buffered()).use { zip ->
+        zip.putNextEntry(ZipEntry("game-manifest.json"))
+        zip.write(manifest.toString(2).toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+        zip.putNextEntry(ZipEntry("storyforge-project.json"))
+        zip.write(projectJson.toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+        assets.forEach { asset ->
+            val source = File(filesDir, asset.relativePath).canonicalFile
+            zip.putNextEntry(ZipEntry("assets/${asset.relativePath}"))
+            source.inputStream().buffered().use { it.copyTo(zip) }
+            zip.closeEntry()
+        }
+        zip.finish()
     }
 }
 

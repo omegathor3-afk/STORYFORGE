@@ -47,6 +47,6 @@ The project uses Kotlin, Jetpack Compose, Android SDK 35, Java 17, and Gradle. G
 - Each scene can use its own imported image and audio assets. The immersive player uses the same branches, conditions, and effects as the studio preview.
 - STORYFORGE has a custom purple storybook launcher icon and animated branded intro. Each story also opens with its own title-screen intro using the project's cover art and description.
 
-## Current limitations
+## Export a single game package\n\n- Export one story as a portable `.storygame` ZIP containing a versioned `game-manifest.json`, one project JSON payload, and its referenced image/audio assets.\n- Package metadata preserves the story title, description, Arabic language, scene count, and a cover-art reference for downstream Android player packaging.\n- This is a portable game-content bundle, **not yet a separately installable APK**. The APK build pipeline for arbitrary user-created stories remains a separate milestone.\n\n## Current limitations
 
 This is an actively developed project, not a final release. The visual node graph, richer dialogue/asset management, persistent playthrough saves, audio controls, full localization, and automated/device-level tests are still planned. The current preview state is session-only and resets when the preview is restarted.
