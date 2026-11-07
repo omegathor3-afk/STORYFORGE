@@ -8,6 +8,8 @@ val generatedApplicationId = providers.gradleProperty("gameApplicationId")
     .orElse("com.storyforge.player").get()
 val generatedDisplayName = providers.gradleProperty("gameDisplayName")
     .orElse("STORYFORGE PLAYER").get()
+val generatedVersionName = providers.gradleProperty("gameVersionName").orElse("1.0.0").get()
+val generatedVersionCode = providers.gradleProperty("gameVersionCode").orElse("1").get().toIntOrNull() ?: error("gameVersionCode must be numeric")
 
 require(generatedApplicationId.matches(Regex("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}"))) {
     "gameApplicationId must be a valid Android application ID"
@@ -20,12 +22,14 @@ android {
     namespace = "com.storyforge.player"
     compileSdk = 35
     defaultConfig {
+        require(generatedVersionCode in 1..2100000000) { "gameVersionCode must be positive" }
+        require(generatedVersionName.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))) { "gameVersionName must use MAJOR.MINOR.PATCH" }
         applicationId = generatedApplicationId
         manifestPlaceholders["gameDisplayName"] = generatedDisplayName
         minSdk = 31
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = generatedVersionCode
+        versionName = generatedVersionName
     }
     buildFeatures { compose = true }
     compileOptions {

@@ -19,6 +19,16 @@ on:
         description: Optional HTTPS link to a square PNG app icon
         required: false
         type: string
+      version_name:
+        description: Game version in MAJOR.MINOR.PATCH format
+        required: false
+        default: "1.0.0"
+        type: string
+      version_code:
+        description: Positive Android version code; increase for every update
+        required: false
+        default: "1"
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +47,8 @@ jobs:
           GAME_TITLE: ${{ inputs.game_title }}
           APPLICATION_ID: ${{ inputs.application_id }}
           ICON_URL: ${{ inputs.icon_url }}
+          GAME_VERSION_NAME: ${{ inputs.version_name }}
+          GAME_VERSION_CODE: ${{ inputs.version_code }}
         run: python3 scripts/prepare_standalone_game.py
 
       - name: Setup Java 17
@@ -54,12 +66,29 @@ jobs:
         run: |
           gradle --no-daemon :player:assembleDebug \
             -PgameApplicationId="$APPLICATION_ID" \
-            -PgameDisplayName="$GAME_TITLE"
+            -PgameDisplayName="$GAME_TITLE" \
+            -PgameVersionName="$GAME_VERSION_NAME" \
+            -PgameVersionCode="$GAME_VERSION_CODE"
+
+      - name: Generate APK checksum and build metadata
+        run: |
+          APK="player/build/outputs/apk/debug/player-debug.apk"
+          sha256sum "$APK" > player/build/outputs/apk/debug/SHA256SUMS.txt
+          {
+            echo "Game: $GAME_TITLE"
+            echo "Application ID: $APPLICATION_ID"
+            echo "Version: $GAME_VERSION_NAME ($GAME_VERSION_CODE)"
+            echo "SHA-256:"
+            cat player/build/outputs/apk/debug/SHA256SUMS.txt
+          } > player/build/outputs/apk/debug/BUILD-INFO.txt
 
       - name: Publish standalone APK
         uses: actions/upload-artifact@v4
         with:
           name: STORYFORGE-GAME-${{ github.run_number }}
-          path: player/build/outputs/apk/debug/player-debug.apk
+          path: |
+            player/build/outputs/apk/debug/player-debug.apk
+            player/build/outputs/apk/debug/SHA256SUMS.txt
+            player/build/outputs/apk/debug/BUILD-INFO.txt
           if-no-files-found: error
           retention-days: 30

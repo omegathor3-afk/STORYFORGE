@@ -13,6 +13,8 @@ import zipfile
 url = os.environ["STORYGAME_URL"].strip()
 title = os.environ.get("GAME_TITLE", "").strip()
 application_id = os.environ.get("APPLICATION_ID", "").strip()
+version_name = os.environ.get("GAME_VERSION_NAME", "1.0.0").strip()
+version_code = os.environ.get("GAME_VERSION_CODE", "1").strip()
 if not url.startswith("https://") or len(url) > 2048:
     raise SystemExit("storygame_url must be an HTTPS URL")
 
@@ -62,7 +64,11 @@ with zipfile.ZipFile(tmp) as archive:
         application_id = "com.storyforge.games.g" + suffix
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*){1,5}", application_id):
         raise SystemExit("Invalid Android application ID")
-    if application_id == "com.storyforge.player":
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version_name):
+    raise SystemExit("Version name must use MAJOR.MINOR.PATCH")
+if not version_code.isdigit() or int(version_code) < 1 or int(version_code) > 2100000000:
+    raise SystemExit("Version code must be between 1 and 2100000000")
+if application_id == "com.storyforge.player":
         raise SystemExit("Standalone games must use a unique Android application ID")
     projects[0]["title"] = title
     manifest["title"] = title
@@ -103,6 +109,8 @@ if icon_url:
 with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
     env.write("GAME_TITLE=" + title.replace(chr(10), " ").replace(chr(13), " ") + chr(10))
     env.write("APPLICATION_ID=" + application_id + chr(10))
+    env.write("GAME_VERSION_NAME=" + version_name + chr(10))
+    env.write("GAME_VERSION_CODE=" + version_code + chr(10))
 
 tmp.unlink(missing_ok=True)
 print("Validated and embedded standalone story package.")
