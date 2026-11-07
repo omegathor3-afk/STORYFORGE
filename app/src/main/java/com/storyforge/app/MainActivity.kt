@@ -296,9 +296,16 @@ class MainActivity : ComponentActivity() {
                                                 }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
                                             }
                                             if (previewScene.choices.none { it.isNotBlank() }) {
-                                                Button(onClick = { if (previewIndex < current.scenes.lastIndex) previewIndex++ },
-                                                    modifier = Modifier.fillMaxWidth()) {
-                                                    Text(if (previewIndex < current.scenes.lastIndex) "متابعة" else "نهاية المعاينة")
+                                                Button(onClick = {
+                                                    if (previewIndex < current.scenes.lastIndex) {
+                                                        previewIndex++
+                                                        previewSceneId = current.scenes[previewIndex].id
+                                                    } else {
+                                                        previewIndex = current.scenes.size
+                                                        previewSceneId = "__END__"
+                                                    }
+                                                }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text(if (previewIndex < current.scenes.lastIndex) "متابعة" else "إنهاء القصة")
                                                 }
                                             }
                                             if (previewIndex >= current.scenes.lastIndex) Text("وصلت إلى آخر مشهد في النسخة الحالية.", color = Gold)
