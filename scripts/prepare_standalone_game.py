@@ -62,13 +62,13 @@ with zipfile.ZipFile(tmp) as archive:
         project_key = str(projects[0].get("id") or manifest.get("projectId") or title)
         suffix = hashlib.sha256(project_key.encode("utf-8")).hexdigest()[:12]
         application_id = "com.storyforge.games.g" + suffix
-    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*){1,5}", application_id):
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){1,5}", application_id):
         raise SystemExit("Invalid Android application ID")
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version_name):
-    raise SystemExit("Version name must use MAJOR.MINOR.PATCH")
-if not version_code.isdigit() or int(version_code) < 1 or int(version_code) > 2100000000:
-    raise SystemExit("Version code must be between 1 and 2100000000")
-if application_id == "com.storyforge.player":
+        raise SystemExit("Version name must use MAJOR.MINOR.PATCH")
+    if not version_code.isdigit() or int(version_code) < 1 or int(version_code) > 2100000000:
+        raise SystemExit("Version code must be between 1 and 2100000000")
+    if application_id == "com.storyforge.player":
         raise SystemExit("Standalone games must use a unique Android application ID")
     projects[0]["title"] = title
     manifest["title"] = title
