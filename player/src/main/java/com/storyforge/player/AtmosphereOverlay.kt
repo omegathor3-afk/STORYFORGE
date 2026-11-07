@@ -14,15 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.StrokeCap
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlin.math.abs
 
 @Composable
 internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: Float = 0.72f, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "darkwood-atmosphere")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "drift")
+    val flash by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1700, easing = LinearEasing), RepeatMode.Restart), label = "distant-lightning")
     val active = effects.toSet() + when (theme) {
         "ashen" -> setOf("ash", "fog", "branches")
         "haunted" -> setOf("fog", "black_shadows", "branches", "dead_leaves")
@@ -92,6 +94,59 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 drawCircle(color, radius = if ("fireflies" in active || "embers" in active) 3.2f else 1.8f, center = Offset(x, y))
             }
         }
+        
+        if ("dead_forest" in active || "branches" in active || theme == "darkwood" || theme == "haunted") {
+            for (i in 0..5) {
+                val x = w * (i / 5f)
+                val sway = sin((phase * 2f * PI + i * 1.7).toFloat()) * 7f
+                val trunk = Color(0x99505A4D)
+                drawLine(trunk, Offset(x, h * 0.02f), Offset(x + sway, h * 0.63f), strokeWidth = 13f - (i % 3) * 2f, cap = StrokeCap.Round)
+                for (b in 0..3) {
+                    val y = h * (0.13f + b * 0.115f)
+                    val reach = 38f + ((i * 17 + b * 23) % 54)
+                    val dir = if ((i + b) % 2 == 0) 1f else -1f
+                    drawLine(trunk, Offset(x + sway * (y / h), y), Offset(x + sway * (y / h) + reach * dir, y - reach * 0.62f), strokeWidth = 4f, cap = StrokeCap.Round)
+                }
+            }
+        }
+        if ("lightning" in active) {
+            val pulse = (1f - abs(flash - 0.18f) / 0.18f).coerceIn(0f, 1f)
+            if (pulse > 0f) drawRect(Color(0xFFB9C8D5).copy(alpha = pulse * 0.13f * intensity.coerceIn(0f, 1f)))
+            if (pulse > 0.55f) {
+                val x = w * 0.72f
+                drawLine(Color(0x99D7E2E8), Offset(x, h * 0.03f), Offset(x - 20f, h * 0.18f), strokeWidth = 3f)
+                drawLine(Color(0x99D7E2E8), Offset(x - 20f, h * 0.18f), Offset(x + 8f, h * 0.27f), strokeWidth = 2f)
+            }
+        }
+        if ("crows" in active) {
+            for (i in 0..4) {
+                val x = ((phase * w * (0.8f + i * 0.11f) + i * w * 0.24f) % (w + 80f)) - 40f
+                val y = h * (0.16f + (i % 3) * 0.075f) + sin((phase * 9f + i).toFloat()) * 8f
+                val bird = Color(0xDD080B0B)
+                drawLine(bird, Offset(x - 8f, y), Offset(x, y - 5f), strokeWidth = 2.4f, cap = StrokeCap.Round)
+                drawLine(bird, Offset(x, y - 5f), Offset(x + 9f, y), strokeWidth = 2.4f, cap = StrokeCap.Round)
+            }
+        }
+        if ("watching_eyes" in active) {
+            for (i in 0..3) {
+                val blink = sin((phase * 2f * PI + i * 2.1f).toFloat()) * 0.5f + 0.5f
+                val x = w * (0.13f + i * 0.23f)
+                val y = h * (0.34f + (i % 2) * 0.16f)
+                val glow = Color(0xFFE3C77A).copy(alpha = (0.12f + blink * 0.65f) * intensity)
+                drawCircle(glow, 2.4f, Offset(x, y))
+                drawCircle(glow, 2.4f, Offset(x + 9f, y))
+            }
+        }
+        if ("moths" in active || "insects" in active) {
+            for (i in 0..17) {
+                val x = w * (0.12f + (i % 6) * 0.14f) + sin((phase * 11f + i).toFloat()) * 16f
+                val y = h * (0.3f + (i % 4) * 0.13f) + sin((phase * 8f + i * 1.9f).toFloat()) * 11f
+                val wing = Color(0x99C5C7A6)
+                drawLine(wing, Offset(x - 2f, y - 1f), Offset(x, y + 1f), strokeWidth = 1.2f)
+                drawLine(wing, Offset(x + 2f, y - 1f), Offset(x, y + 1f), strokeWidth = 1.2f)
+            }
+        }
+
         if ("black_shadows" in active) {
             for (i in 0..3) {
                 val x = ((phase * w * 1.7f + i * w * 0.37f) % (w + 100f)) - 50f
