@@ -69,7 +69,17 @@ data class StoryScene(
     val choiceTimerSeconds: Int = 0,
     val timeoutChoiceIndex: Int = 0,
     val atmosphereEffects: List<String> = emptyList(),
-    val atmosphereIntensity: Float = 0.72f
+    val atmosphereIntensity: Float = 0.72f,
+    val environmentProps: List<SceneProp> = emptyList()
+)
+
+data class SceneProp(
+    val id: String = UUID.randomUUID().toString(),
+    val type: String,
+    val x: Float = 0.5f,
+    val y: Float = 0.62f,
+    val scale: Float = 1f,
+    val foreground: Boolean = false
 )
 
 data class DialogueLine(
@@ -615,6 +625,72 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Text("صفر = بدون طبقات جوية، 100٪ = أجواء كثيفة. الإعداد مستقل لكل مشهد.", color = Muted, fontSize = 10.sp)
                                         Divider(color = Color(0xFF343B43))
+                                        Text("عناصر البيئة داخل المشهد", color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                                        Text("أضف تفاصيل ثابتة للمكان: جذوع ميتة، صخور، فطر، فوانيس أو سياج محطّم. كل عنصر له مكان وحجم وطبقة.", color = Muted, fontSize = 11.sp)
+                                        val propOptions = listOf(
+                                            "dead_tree" to "🌲 شجرة ميتة", "stump" to "🪵 جذع مقطوع",
+                                            "rocks" to "🪨 صخور", "fungus" to "🍄 فطر متوهج",
+                                            "broken_fence" to "▥ سياج مكسور", "lantern" to "🏮 فانوس",
+                                            "bones" to "☠ عظام", "hanging_roots" to "〰 جذور معلّقة",
+                                            "shrine" to "♜ ضريح مهجور", "crates" to "▦ صناديق قديمة"
+                                        )
+                                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                            propOptions.chunked(2).forEach { optionRow ->
+                                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                                    optionRow.forEach { (type, label) ->
+                                                        OutlinedButton(
+                                                            onClick = {
+                                                                updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                                    if (item.id == scene.id) item.copy(environmentProps = item.environmentProps + SceneProp(type = type, x = 0.25f + (item.environmentProps.size % 3) * 0.25f, y = 0.68f)) else item
+                                                                }) }
+                                                            }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 7.dp)
+                                                        ) { Text(label, fontSize = 10.sp) }
+                                                    }
+                                                    if (optionRow.size == 1) Spacer(Modifier.weight(1f))
+                                                }
+                                            }
+                                        }
+                                        if (scene.environmentProps.isEmpty()) Text("المشهد لسه فاضي من عناصر البيئة. أضف أول عنصر من القائمة.", color = Muted, fontSize = 11.sp)
+                                        scene.environmentProps.forEachIndexed { propIndex, prop ->
+                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(12.dp)) {
+                                                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text("${propIndex + 1}. " + (propOptions.firstOrNull { it.first == prop.type }?.second ?: prop.type), color = Gold, modifier = Modifier.weight(1f), fontSize = 12.sp)
+                                                        TextButton(onClick = {
+                                                            updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(environmentProps = item.environmentProps.filterNot { it.id == prop.id }) else item
+                                                            }) }
+                                                        }) { Text("حذف", color = Color(0xFFE18B83)) }
+                                                    }
+                                                    Text("الموضع الأفقي: ${(prop.x * 100).toInt()}٪", color = Muted, fontSize = 10.sp)
+                                                    Slider(value = prop.x.coerceIn(0f, 1f), onValueChange = { v ->
+                                                        updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                            if (item.id == scene.id) item.copy(environmentProps = item.environmentProps.map { if (it.id == prop.id) it.copy(x = v) else it }) else item
+                                                        }) }
+                                                    })
+                                                    Text("الارتفاع: ${(prop.y * 100).toInt()}٪", color = Muted, fontSize = 10.sp)
+                                                    Slider(value = prop.y.coerceIn(0f, 1f), onValueChange = { v ->
+                                                        updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                            if (item.id == scene.id) item.copy(environmentProps = item.environmentProps.map { if (it.id == prop.id) it.copy(y = v) else it }) else item
+                                                        }) }
+                                                    })
+                                                    Text("الحجم: ${(prop.scale * 100).toInt()}٪", color = Muted, fontSize = 10.sp)
+                                                    Slider(value = prop.scale.coerceIn(0.4f, 2.2f), onValueChange = { v ->
+                                                        updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                            if (item.id == scene.id) item.copy(environmentProps = item.environmentProps.map { if (it.id == prop.id) it.copy(scale = v) else it }) else item
+                                                        }) }
+                                                    }, valueRange = 0.4f..2.2f)
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Checkbox(checked = prop.foreground, onCheckedChange = { v ->
+                                                            updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(environmentProps = item.environmentProps.map { if (it.id == prop.id) it.copy(foreground = v) else it }) else item
+                                                            }) }
+                                                        })
+                                                        Text("يظهر في مقدمة الصورة", color = Muted, fontSize = 11.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically) {
                                             Text("حوارات المشهد", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -1575,6 +1651,13 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             val atmosphere = JSONArray(); scene.atmosphereEffects.forEach { atmosphere.put(it) }
             s.put("atmosphereEffects", atmosphere)
             s.put("atmosphereIntensity", scene.atmosphereIntensity.coerceIn(0f, 1f).toDouble())
+            val props = JSONArray()
+            scene.environmentProps.forEach { prop ->
+                props.put(JSONObject().put("id", prop.id).put("type", prop.type)
+                    .put("x", prop.x.coerceIn(0f, 1f).toDouble()).put("y", prop.y.coerceIn(0f, 1f).toDouble())
+                    .put("scale", prop.scale.coerceIn(0.4f, 2.2f).toDouble()).put("foreground", prop.foreground))
+            }
+            s.put("environmentProps", props)
             val dialogues = JSONArray()
             scene.dialogues.forEach { line ->
                 dialogues.put(JSONObject().put("id", line.id).put("speaker", line.speaker).put("text", line.text))
@@ -1626,6 +1709,19 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 timeoutChoiceIndex = s.optInt("timeoutChoiceIndex", 0).coerceAtLeast(0),
                 atmosphereEffects = s.optJSONArray("atmosphereEffects")?.let { values -> (0 until values.length()).map { k -> values.optString(k) } } ?: emptyList(),
                 atmosphereIntensity = s.optDouble("atmosphereIntensity", 0.72).toFloat().coerceIn(0f, 1f),
+                environmentProps = s.optJSONArray("environmentProps")?.let { values ->
+                    (0 until values.length()).map { k ->
+                        val item = values.getJSONObject(k)
+                        SceneProp(
+                            id = item.optString("id", UUID.randomUUID().toString()),
+                            type = item.optString("type", "rocks"),
+                            x = item.optDouble("x", 0.5).toFloat().coerceIn(0f, 1f),
+                            y = item.optDouble("y", 0.62).toFloat().coerceIn(0f, 1f),
+                            scale = item.optDouble("scale", 1.0).toFloat().coerceIn(0.4f, 2.2f),
+                            foreground = item.optBoolean("foreground", false)
+                        )
+                    }
+                } ?: emptyList(),
                 dialogues = s.optJSONArray("dialogues")?.let { values ->
                     (0 until values.length()).map { k ->
                         val d = values.getJSONObject(k)
