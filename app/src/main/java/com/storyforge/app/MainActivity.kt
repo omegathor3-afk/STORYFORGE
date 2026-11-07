@@ -82,23 +82,6 @@ class MainActivity : ComponentActivity() {
             var previewIndex by remember { mutableIntStateOf(0) }
             var previewSceneId by remember { mutableStateOf<String?>(null) }
             var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-            val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-                if (uri != null) runCatching {
-                    contentResolver.openOutputStream(uri)?.use { it.write(encodeProjects(projects).toByteArray(Charsets.UTF_8)) }
-                    Toast.makeText(this@MainActivity, "تم تصدير نسخة STORYFORGE", Toast.LENGTH_SHORT).show()
-                }.onFailure { Toast.makeText(this@MainActivity, "تعذر تصدير النسخة", Toast.LENGTH_SHORT).show() }
-            }
-            val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                if (uri != null) runCatching {
-                    val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: error("Empty file")
-                    val restored = decodeProjects(json)
-                    require(restored.isNotEmpty()) { "No projects found" }
-                    persist(restored)
-                    Toast.makeText(this@MainActivity, "تم استيراد ${restored.size} مشروع", Toast.LENGTH_SHORT).show()
-                }.onFailure { Toast.makeText(this@MainActivity, "ملف JSON غير صالح أو تعذر قراءته", Toast.LENGTH_LONG).show() }
-            }
-
             fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {
                 if (recordHistory && projects != next) {
                     undoStack.add(projects.toList())
@@ -130,6 +113,23 @@ class MainActivity : ComponentActivity() {
             fun updateProject(id: String, transform: (StoryProject) -> StoryProject) {
                 persist(projects.map { if (it.id == id) transform(it) else it })
             }
+            val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+                if (uri != null) runCatching {
+                    contentResolver.openOutputStream(uri)?.use { it.write(encodeProjects(projects).toByteArray(Charsets.UTF_8)) }
+                    Toast.makeText(this@MainActivity, "تم تصدير نسخة STORYFORGE", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "تعذر تصدير النسخة", Toast.LENGTH_SHORT).show() }
+            }
+            val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null) runCatching {
+                    val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                        ?: error("Empty file")
+                    val restored = decodeProjects(json)
+                    require(restored.isNotEmpty()) { "No projects found" }
+                    persist(restored)
+                    Toast.makeText(this@MainActivity, "تم استيراد ${restored.size} مشروع", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "ملف JSON غير صالح أو تعذر قراءته", Toast.LENGTH_LONG).show() }
+            }
+
             val current = projects.firstOrNull { it.id == selectedId }
 
             MaterialTheme(colorScheme = darkColorScheme(
