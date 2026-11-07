@@ -324,6 +324,16 @@ class MainActivity : ComponentActivity() {
                                                 label = { Text("تأثير الاختيار (اختياري)") },
                                                 placeholder = { Text("مثال: trust+=1 أو keys=0") })
                                             TextButton(onClick = {
+                                                updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { s ->
+                                                    if (s.id == scene.id) s.copy(
+                                                        choices = s.choices.filterIndexed { i, _ -> i != index },
+                                                        choiceTargets = s.choiceTargets.filterIndexed { i, _ -> i != index },
+                                                        choiceConditions = s.choiceConditions.filterIndexed { i, _ -> i != index },
+                                                        choiceEffects = s.choiceEffects.filterIndexed { i, _ -> i != index }
+                                                    ) else s
+                                                }) }
+                                            }) { Text("حذف الاختيار", color = Color(0xFFE18B83), fontSize = 11.sp) }
+                                            TextButton(onClick = {
                                                 val destinations = current.scenes.map { it.id } + "__END__"
                                                 val next = if (target == null) destinations.first()
                                                     else destinations[(destinations.indexOf(target).coerceAtLeast(-1) + 1) % destinations.size]
