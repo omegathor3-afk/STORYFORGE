@@ -242,8 +242,15 @@ class MainActivity : ComponentActivity() {
                                     if (current.variables.isEmpty()) Text("لا توجد متغيرات. أضف مثلًا: ثقة = 0 أو مفاتيح = 1.", color = Muted, fontSize = 12.sp)
                                     current.variables.forEach { variable ->
                                         Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(10.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                            Text("${variable.name} = ${variable.initialValue}", color = Gold)
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text(variable.name, color = Gold, modifier = Modifier.weight(1f))
+                                            OutlinedTextField(variable.initialValue.toString(), { value ->
+                                                val parsed = value.toIntOrNull() ?: return@OutlinedTextField
+                                                updateProject(current.id) { p -> p.copy(variables = p.variables.map { v ->
+                                                    if (v.name == variable.name) v.copy(initialValue = parsed) else v
+                                                }) }
+                                            }, modifier = Modifier.width(92.dp), singleLine = true,
+                                                label = { Text("القيمة") })
                                             TextButton(onClick = { updateProject(current.id) { p -> p.copy(variables = p.variables - variable) } }) {
                                                 Text("حذف", color = Color(0xFFE18B83))
                                             }
@@ -260,7 +267,7 @@ class MainActivity : ComponentActivity() {
                                             selectedSceneId = scene.id
                                         }) { Text("＋ إضافة مشهد") }
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         current.scenes.forEachIndexed { index, scene ->
                                             FilterChip(
                                                 selected = selectedSceneId == scene.id,
