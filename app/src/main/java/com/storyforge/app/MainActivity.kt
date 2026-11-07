@@ -40,7 +40,14 @@ data class StoryScene(
     val choices: List<String> = listOf("", "", ""),
     val choiceTargets: List<String?> = emptyList(),
     val choiceConditions: List<String> = emptyList(),
-    val choiceEffects: List<String> = emptyList()
+    val choiceEffects: List<String> = emptyList(),
+    val dialogues: List<DialogueLine> = emptyList()
+)
+
+data class DialogueLine(
+    val id: String = UUID.randomUUID().toString(),
+    val speaker: String = "",
+    val text: String = ""
 )
 
 data class StoryVariable(
@@ -357,6 +364,45 @@ class MainActivity : ComponentActivity() {
                                             updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { if (it.id == scene.id) it.copy(text = value) else it }) }
                                         }, modifier = Modifier.fillMaxWidth(), minLines = 6,
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
+                                        Divider(color = Color(0xFF343B43))
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically) {
+                                            Text("حوارات المشهد", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                            TextButton(onClick = {
+                                                updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                    if (item.id == scene.id) item.copy(dialogues = item.dialogues + DialogueLine()) else item
+                                                }) }
+                                            }) { Text("＋ سطر حوار") }
+                                        }
+                                        Text("كل سطر مرتبط بهذا المشهد. اكتب اسم المتحدث ونص كلامه، وسيظهر بالترتيب في المعاينة.",
+                                            color = Muted, fontSize = 11.sp)
+                                        if (scene.dialogues.isEmpty()) Text("لا توجد حوارات في هذا المشهد بعد.", color = Muted, fontSize = 12.sp)
+                                        scene.dialogues.forEachIndexed { dialogueIndex, line ->
+                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(12.dp)) {
+                                                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text("سطر ${dialogueIndex + 1}", color = Gold, modifier = Modifier.weight(1f))
+                                                        TextButton(onClick = {
+                                                            updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(dialogues = item.dialogues.filterNot { it.id == line.id }) else item
+                                                            }) }
+                                                        }) { Text("حذف السطر", color = Color(0xFFE18B83)) }
+                                                    }
+                                                    OutlinedTextField(line.speaker, { value ->
+                                                        updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                            if (item.id == scene.id) item.copy(dialogues = item.dialogues.map { d -> if (d.id == line.id) d.copy(speaker = value) else d }) else item
+                                                        }) }
+                                                    }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("المتحدث") },
+                                                        placeholder = { Text("مثال: ليلى") })
+                                                    OutlinedTextField(line.text, { value ->
+                                                        updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                            if (item.id == scene.id) item.copy(dialogues = item.dialogues.map { d -> if (d.id == line.id) d.copy(text = value) else d }) else item
+                                                        }) }
+                                                    }, modifier = Modifier.fillMaxWidth(), minLines = 2, label = { Text("نص الحوار") },
+                                                        placeholder = { Text("اكتب ما تقوله الشخصية...") })
+                                                }
+                                            }
+                                        }
                                         FieldLabel("اختيارات اللاعب")
                                         scene.choices.forEachIndexed { index, choice ->
                                             OutlinedTextField(choice, { value ->
@@ -521,6 +567,13 @@ class MainActivity : ComponentActivity() {
                                             )
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
+                                            previewScene.dialogues.filter { it.speaker.isNotBlank() || it.text.isNotBlank() }.forEach { line ->
+                                                Column(Modifier.fillMaxWidth().background(Ink, RoundedCornerShape(12.dp)).padding(12.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                    if (line.speaker.isNotBlank()) Text(line.speaker, color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                                    if (line.text.isNotBlank()) Text(line.text, lineHeight = 23.sp)
+                                                }
+                                            }
                                             previewScene.choices.forEachIndexed { choiceIndex, choice ->
                                                 val condition = previewScene.choiceConditions.getOrNull(choiceIndex).orEmpty()
                                                 val allowed = evaluateStoryCondition(condition, previewValues)
@@ -725,6 +778,11 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             val conditions = JSONArray(); scene.choiceConditions.forEach { conditions.put(it) }
             val effects = JSONArray(); scene.choiceEffects.forEach { effects.put(it) }
             s.put("choiceConditions", conditions); s.put("choiceEffects", effects)
+            val dialogues = JSONArray()
+            scene.dialogues.forEach { line ->
+                dialogues.put(JSONObject().put("id", line.id).put("speaker", line.speaker).put("text", line.text))
+            }
+            s.put("dialogues", dialogues)
             scenes.put(s)
         }
         val characters = JSONArray(); project.characters.forEach { characters.put(it) }
@@ -758,6 +816,16 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 } ?: emptyList(),
                 choiceEffects = s.optJSONArray("choiceEffects")?.let { values ->
                     (0 until values.length()).map { k -> values.optString(k) }
+                } ?: emptyList(),
+                dialogues = s.optJSONArray("dialogues")?.let { values ->
+                    (0 until values.length()).map { k ->
+                        val d = values.getJSONObject(k)
+                        DialogueLine(
+                            id = d.optString("id", UUID.randomUUID().toString()),
+                            speaker = d.optString("speaker", ""),
+                            text = d.optString("text", "")
+                        )
+                    }
                 } ?: emptyList()
             )
         }
