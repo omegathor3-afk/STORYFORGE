@@ -134,9 +134,9 @@ class MainActivity : ComponentActivity() {
             var cloudOidcClientId by remember { mutableStateOf(prefs.getString("cloud_oidc_client_id", "") ?: "") }
             var cloudOidcAudience by remember { mutableStateOf(prefs.getString("cloud_oidc_audience", "") ?: "") }
             var cloudAccessToken by remember { mutableStateOf<String?>(null) }
-            var cloudJobId by remember { mutableStateOf<String?>(null) }
-            var cloudJobStatus by remember { mutableStateOf("queued") }
-            var cloudArtifactAvailable by remember { mutableStateOf(false) }
+            var cloudJobId by remember { mutableStateOf(prefs.getString("cloud_job_id", null)) }
+            var cloudJobStatus by remember { mutableStateOf(prefs.getString("cloud_job_status", "queued") ?: "queued") }
+            var cloudArtifactAvailable by remember { mutableStateOf(prefs.getBoolean("cloud_artifact_available", false)) }
             var cloudBusy by remember { mutableStateOf(false) }
             var cloudMessage by remember { mutableStateOf("") }
             val cloudAuthService = remember { AuthorizationService(this@MainActivity) }
@@ -952,6 +952,9 @@ class MainActivity : ComponentActivity() {
                                                     cloudJobId = job.jobId
                                                     cloudJobStatus = job.status
                                                     cloudArtifactAvailable = false
+                                                    prefs.edit().putString("cloud_job_id", job.jobId)
+                                                        .putString("cloud_job_status", job.status)
+                                                        .putBoolean("cloud_artifact_available", false).apply()
                                                     cloudMessage = "تم رفع القصة وإرسال طلب البناء بنجاح."
                                                 }.onFailure { error ->
                                                     cloudMessage = error.message ?: "تعذر بدء البناء."
@@ -971,6 +974,8 @@ class MainActivity : ComponentActivity() {
                                                 }.onSuccess { status ->
                                                     cloudJobStatus = status.status
                                                     cloudArtifactAvailable = status.artifactAvailable
+                                                    prefs.edit().putString("cloud_job_status", status.status)
+                                                        .putBoolean("cloud_artifact_available", status.artifactAvailable).apply()
                                                     cloudMessage = when (status.status) {
                                                         "completed" -> if (status.artifactAvailable) "اكتمل البناء والملف جاهز للتنزيل." else "اكتمل البناء، جارٍ تجهيز ملف النتائج."
                                                         "failed" -> "فشل البناء. افتح سجل GitHub Actions لمعرفة التفاصيل."

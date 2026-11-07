@@ -65,6 +65,13 @@ internal fun BuildCenter(
     var versionName by remember { mutableStateOf("1.0.0") }
     var versionCode by remember { mutableStateOf("1") }
     var buildType by remember { mutableStateOf("debug") }
+    val localizedJobStatus = when (jobStatus) {
+        "queued" -> "في قائمة الانتظار"
+        "in_progress" -> "قيد التنفيذ"
+        "completed" -> "اكتمل البناء"
+        "failed" -> "فشل البناء"
+        else -> jobStatus
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("مركز بناء الألعاب", color = BuildGold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
@@ -149,7 +156,7 @@ internal fun BuildCenter(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text("حالة طلب البناء", color = BuildGold, fontWeight = FontWeight.Bold)
                     Text("رقم الطلب: $jobId", color = BuildMuted, fontSize = 11.sp)
-                    Text("الحالة: $jobStatus", color = if (jobStatus == "completed") BuildGreen else BuildMuted, fontWeight = FontWeight.Bold)
+                    Text("الحالة: $localizedJobStatus", color = when (jobStatus) { "completed" -> BuildGreen; "failed" -> BuildRed; else -> BuildMuted }, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onRefresh, enabled = !busy) { Text("تحديث الحالة") }
                         if (artifactAvailable) Button(onClick = onDownload, enabled = !busy) { Text("تنزيل APK ZIP") }
