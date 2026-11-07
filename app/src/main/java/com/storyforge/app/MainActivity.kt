@@ -34,7 +34,14 @@ data class StoryScene(
     val title: String = "مشهد جديد",
     val text: String = "",
     val choices: List<String> = listOf("", "", ""),
-    val choiceTargets: List<String?> = emptyList()
+    val choiceTargets: List<String?> = emptyList(),
+    val choiceConditions: List<String> = emptyList(),
+    val choiceEffects: List<String> = emptyList()
+)
+
+data class StoryVariable(
+    val name: String,
+    val initialValue: Int = 0
 )
 
 data class StoryProject(
@@ -42,7 +49,8 @@ data class StoryProject(
     val title: String,
     val description: String = "",
     val scenes: List<StoryScene> = listOf(StoryScene()),
-    val characters: List<String> = emptyList()
+    val characters: List<String> = emptyList(),
+    val variables: List<StoryVariable> = emptyList()
 )
 
 class MainActivity : ComponentActivity() {
@@ -59,12 +67,16 @@ class MainActivity : ComponentActivity() {
             var newTitle by remember { mutableStateOf("") }
             var newDescription by remember { mutableStateOf("") }
             var showCharacterDialog by remember { mutableStateOf(false) }
+            var showVariableDialog by remember { mutableStateOf(false) }
             var characterName by remember { mutableStateOf("") }
+            var variableName by remember { mutableStateOf("") }
+            var variableValue by remember { mutableStateOf("0") }
             var showBackup by remember { mutableStateOf(false) }
             var backupText by remember { mutableStateOf("") }
             var importText by remember { mutableStateOf("") }
             var previewIndex by remember { mutableIntStateOf(0) }
             var previewSceneId by remember { mutableStateOf<String?>(null) }
+            var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
             fun persist(next: List<StoryProject>) {
                 projects = next
@@ -166,6 +178,23 @@ class MainActivity : ComponentActivity() {
                                     Divider(color = Color(0xFF343B43))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically) {
+                                        Text("متغيرات القصة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        TextButton(onClick = { variableName = ""; variableValue = "0"; showVariableDialog = true }) { Text("＋ متغير") }
+                                    }
+                                    if (current.variables.isEmpty()) Text("لا توجد متغيرات. أضف مثلًا: ثقة = 0 أو مفاتيح = 1.", color = Muted, fontSize = 12.sp)
+                                    current.variables.forEach { variable ->
+                                        Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text("${variable.name} = ${variable.initialValue}", color = Gold)
+                                            TextButton(onClick = { updateProject(current.id) { p -> p.copy(variables = p.variables - variable) } }) {
+                                                Text("حذف", color = Color(0xFFE18B83))
+                                            }
+                                        }
+                                    }
+                                    Text("استخدم اسم المتغير في شرط الاختيار أو تأثيره، مثل: keys>=1 أو trust+=1.", color = Muted, fontSize = 12.sp)
+                                    Divider(color = Color(0xFF343B43))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically) {
                                         Text("المشاهد", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                         TextButton(onClick = {
                                             val scene = StoryScene(title = "مشهد ${current.scenes.size + 1}")
@@ -210,6 +239,32 @@ class MainActivity : ComponentActivity() {
                                                 null -> "المشهد التالي تلقائيًا"
                                                 else -> current.scenes.firstOrNull { it.id == target }?.title ?: "وجهة غير موجودة"
                                             }
+                                            val conditionValue = scene.choiceConditions.getOrNull(index).orEmpty()
+                                            val effectValue = scene.choiceEffects.getOrNull(index).orEmpty()
+                                            OutlinedTextField(conditionValue, { value ->
+                                                updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { s ->
+                                                    if (s.id == scene.id) {
+                                                        val values = s.choiceConditions.toMutableList()
+                                                        while (values.size <= index) values.add("")
+                                                        values[index] = value
+                                                        s.copy(choiceConditions = values)
+                                                    } else s
+                                                }) }
+                                            }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                                label = { Text("شرط الظهور (اختياري)") },
+                                                placeholder = { Text("مثال: keys>=1") })
+                                            OutlinedTextField(effectValue, { value ->
+                                                updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { s ->
+                                                    if (s.id == scene.id) {
+                                                        val values = s.choiceEffects.toMutableList()
+                                                        while (values.size <= index) values.add("")
+                                                        values[index] = value
+                                                        s.copy(choiceEffects = values)
+                                                    } else s
+                                                }) }
+                                            }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                                label = { Text("تأثير الاختيار (اختياري)") },
+                                                placeholder = { Text("مثال: trust+=1 أو keys=0") })
                                             TextButton(onClick = {
                                                 val destinations = current.scenes.map { it.id } + "__END__"
                                                 val next = if (target == null) destinations.first()
@@ -271,6 +326,7 @@ class MainActivity : ComponentActivity() {
                                     if (previewSceneId == null || (previewSceneId != "__END__" && current.scenes.none { it.id == previewSceneId })) {
                                         previewSceneId = current.scenes.first().id
                                         previewIndex = 0
+                                        previewValues = current.variables.associate { it.name to it.initialValue }
                                     }
                                     val safeIndex = if (previewSceneId == "__END__") current.scenes.lastIndex
                                         else current.scenes.indexOfFirst { it.id == previewSceneId }.coerceAtLeast(0)
@@ -280,10 +336,17 @@ class MainActivity : ComponentActivity() {
                                     } else Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
                                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             Text("المشهد ${safeIndex + 1} / ${current.scenes.size}", color = Gold, fontSize = 12.sp)
+                                            if (current.variables.isNotEmpty()) Text(
+                                                current.variables.joinToString("  •  ") { "${it.name}: ${previewValues[it.name] ?: it.initialValue}" },
+                                                color = Color(0xFF8CBAA5), fontSize = 12.sp
+                                            )
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
                                             previewScene.choices.forEachIndexed { choiceIndex, choice ->
-                                                if (choice.isNotBlank()) OutlinedButton(onClick = {
+                                                val condition = previewScene.choiceConditions.getOrNull(choiceIndex).orEmpty()
+                                                val allowed = evaluateStoryCondition(condition, previewValues)
+                                                if (choice.isNotBlank() && allowed) OutlinedButton(onClick = {
+                                                    previewValues = applyStoryEffect(previewScene.choiceEffects.getOrNull(choiceIndex).orEmpty(), previewValues)
                                                     val target = previewScene.choiceTargets.getOrNull(choiceIndex)
                                                     when {
                                                         target == "__END__" -> { previewSceneId = "__END__"; previewIndex = current.scenes.size }
@@ -318,6 +381,7 @@ class MainActivity : ComponentActivity() {
                                     OutlinedButton(onClick = {
                                         previewIndex = 0
                                         previewSceneId = current.scenes.firstOrNull()?.id
+                                        previewValues = current.variables.associate { it.name to it.initialValue }
                                     }, modifier = Modifier.fillMaxWidth()) { Text("إعادة من البداية") }
                                     Text("كل اختيار يمكن توجيهه إلى مشهد مستقل أو إنهاء القصة. الوجهة التلقائية تتابع للمشهد التالي.", color = Muted, fontSize = 12.sp)
                                 }
@@ -370,6 +434,34 @@ class MainActivity : ComponentActivity() {
                         }) { Text("إنشاء") }
                     },
                     dismissButton = { TextButton(onClick = { showNewProject = false }) { Text("إلغاء") } }
+                )
+            }
+            if (showVariableDialog) {
+                AlertDialog(
+                    onDismissRequest = { showVariableDialog = false },
+                    title = { Text("إضافة متغير للقصة") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedTextField(variableName, { variableName = it.trim().replace(" ", "_") },
+                                label = { Text("اسم المتغير (بدون مسافات)") }, singleLine = true)
+                            OutlinedTextField(variableValue, { variableValue = it.filter { ch -> ch == '-' || ch.isDigit() } },
+                                label = { Text("القيمة الابتدائية") }, singleLine = true)
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            selectedId?.let { id ->
+                                val name = variableName.trim()
+                                val value = variableValue.toIntOrNull() ?: 0
+                                if (name.isNotBlank()) updateProject(id) { p ->
+                                    if (p.variables.any { it.name == name }) p
+                                    else p.copy(variables = p.variables + StoryVariable(name, value))
+                                }
+                            }
+                            showVariableDialog = false
+                        }) { Text("إضافة") }
+                    },
+                    dismissButton = { TextButton(onClick = { showVariableDialog = false }) { Text("إلغاء") } }
                 )
             }
             if (showCharacterDialog) {
@@ -444,10 +536,17 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             val targets = JSONArray()
             scene.choiceTargets.forEach { targets.put(it ?: JSONObject.NULL) }
             s.put("choiceTargets", targets)
+            val conditions = JSONArray(); scene.choiceConditions.forEach { conditions.put(it) }
+            val effects = JSONArray(); scene.choiceEffects.forEach { effects.put(it) }
+            s.put("choiceConditions", conditions); s.put("choiceEffects", effects)
             scenes.put(s)
         }
         val characters = JSONArray(); project.characters.forEach { characters.put(it) }
-        p.put("scenes", scenes); p.put("characters", characters); array.put(p)
+        val variables = JSONArray()
+        project.variables.forEach { variable ->
+            variables.put(JSONObject().put("name", variable.name).put("initialValue", variable.initialValue))
+        }
+        p.put("scenes", scenes); p.put("characters", characters); p.put("variables", variables); array.put(p)
     }
     return array.toString(2)
 }
@@ -467,19 +566,62 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 choices = (0 until choicesJson.length()).map { choicesJson.optString(it) },
                 choiceTargets = s.optJSONArray("choiceTargets")?.let { targets ->
                     (0 until targets.length()).map { k -> if (targets.isNull(k)) null else targets.optString(k) }
+                } ?: emptyList(),
+                choiceConditions = s.optJSONArray("choiceConditions")?.let { values ->
+                    (0 until values.length()).map { k -> values.optString(k) }
+                } ?: emptyList(),
+                choiceEffects = s.optJSONArray("choiceEffects")?.let { values ->
+                    (0 until values.length()).map { k -> values.optString(k) }
                 } ?: emptyList()
             )
         }
         val charsJson = p.optJSONArray("characters") ?: JSONArray()
+        val variablesJson = p.optJSONArray("variables") ?: JSONArray()
         StoryProject(
             id = p.optString("id", UUID.randomUUID().toString()),
             title = p.optString("title", "قصة بلا عنوان"),
             description = p.optString("description", ""),
             scenes = scenes.ifEmpty { listOf(StoryScene()) },
-            characters = (0 until charsJson.length()).map { charsJson.optString(it) }
+            characters = (0 until charsJson.length()).map { charsJson.optString(it) },
+            variables = (0 until variablesJson.length()).map { k ->
+                val v = variablesJson.getJSONObject(k)
+                StoryVariable(v.optString("name"), v.optInt("initialValue", 0))
+            }
         )
     }
 }
 
 private fun loadProjects(prefs: android.content.SharedPreferences): List<StoryProject> =
     runCatching { decodeProjects(prefs.getString("projects_json", "[]") ?: "[]") }.getOrDefault(emptyList())
+
+
+private fun evaluateStoryCondition(expression: String, values: Map<String, Int>): Boolean {
+    if (expression.isBlank()) return true
+    val match = Regex("^([A-Za-z0-9_]+)\\s*(>=|<=|==|!=|>|<)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return false
+    val actual = values[match.groupValues[1]] ?: 0
+    val expected = match.groupValues[3].toIntOrNull() ?: return false
+    return when (match.groupValues[2]) {
+        ">=" -> actual >= expected
+        "<=" -> actual <= expected
+        "==" -> actual == expected
+        "!=" -> actual != expected
+        ">" -> actual > expected
+        "<" -> actual < expected
+        else -> false
+    }
+}
+
+private fun applyStoryEffect(expression: String, values: Map<String, Int>): Map<String, Int> {
+    if (expression.isBlank()) return values
+    val match = Regex("^([A-Za-z0-9_]+)\\s*(=|\\+=|-=)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return values
+    val name = match.groupValues[1]
+    val amount = match.groupValues[3].toIntOrNull() ?: return values
+    val old = values[name] ?: 0
+    val next = when (match.groupValues[2]) {
+        "=" -> amount
+        "+=" -> old + amount
+        "-=" -> old - amount
+        else -> old
+    }
+    return values + (name to next)
+}
