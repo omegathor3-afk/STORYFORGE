@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [ main, feature/starter-project-wizard, feature/library-search ]
+    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror ]
   workflow_dispatch:
 
 jobs:
