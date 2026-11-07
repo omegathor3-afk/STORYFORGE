@@ -8,6 +8,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class StoryEngineTest {
     @Test
@@ -37,6 +39,54 @@ class StoryEngineTest {
             assertEquals("اختبار", restored.single().title)
             assertEquals("scene-a", restored.single().assets.single().sceneId)
             assertEquals(byteArrayOf(1, 2, 3, 4).toList(), asset.readBytes().toList())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun invalidZipManifestDoesNotReplaceExistingAssets() {
+        val root = Files.createTempDirectory("storyforge-restore-test").toFile()
+        try {
+            val existing = File(root, "storyforge_assets/old/keep.bin")
+            existing.parentFile?.mkdirs()
+            existing.writeBytes(byteArrayOf(9, 8, 7))
+            val bytes = ByteArrayOutputStream()
+            ZipOutputStream(bytes).use { zip ->
+                zip.putNextEntry(ZipEntry("storyforge-projects.json"))
+                zip.write("not-json".toByteArray())
+                zip.closeEntry()
+                zip.putNextEntry(ZipEntry("assets/storyforge_assets/new/file.bin"))
+                zip.write(byteArrayOf(1, 2, 3))
+                zip.closeEntry()
+            }
+            org.junit.Assert.assertThrows( Exception::class.java) {
+                restoreStoryZipBackup(ByteArrayInputStream(bytes.toByteArray()), root)
+            }
+            assertEquals(listOf<Byte>(9, 8, 7), existing.readBytes().toList())
+            assertFalse(File(root, "storyforge_assets/new/file.bin").exists())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun zipTraversalPathIsRejected() {
+        val root = Files.createTempDirectory("storyforge-zip-slip").toFile()
+        try {
+            val bytes = ByteArrayOutputStream()
+            ZipOutputStream(bytes).use { zip ->
+                zip.putNextEntry(ZipEntry("storyforge-projects.json"))
+                zip.write("[]".toByteArray())
+                zip.closeEntry()
+                zip.putNextEntry(ZipEntry("assets/storyforge_assets/../../escape.bin"))
+                zip.write(byteArrayOf(1))
+                zip.closeEntry()
+            }
+            org.junit.Assert.assertThrows(Exception::class.java) {
+                restoreStoryZipBackup(ByteArrayInputStream(bytes.toByteArray()), root)
+            }
+            assertFalse(File(root.parentFile, "escape.bin").exists())
         } finally {
             root.deleteRecursively()
         }
