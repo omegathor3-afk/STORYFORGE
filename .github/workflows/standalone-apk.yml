@@ -70,6 +70,42 @@ jobs:
             -PgameVersionName="$GAME_VERSION_NAME" \
             -PgameVersionCode="$GAME_VERSION_CODE"
 
+      - name: Verify standalone APK identity and embedded story
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="player/build/outputs/apk/debug/player-debug.apk"
+          test -s "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | grep -F "package: name='$APPLICATION_ID'"
+          printf '%s\n' "$BADGING" | grep -F "application-label:'$GAME_TITLE'"
+          printf '%s\n' "$BADGING" | grep -F "versionName='$GAME_VERSION_NAME'"
+          unzip -Z1 "$APK" | grep -Fx 'assets/default.storygame'
+          TMP_STORY="$(mktemp)"
+          unzip -p "$APK" assets/default.storygame > "$TMP_STORY"
+          python3 - "$TMP_STORY" <<'PY'
+          import sys
+          import zipfile
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              bad = archive.testzip()
+              if bad:
+                  raise SystemExit(f"Embedded story ZIP is corrupt: {bad}")
+              names = set(archive.namelist())
+              if "game-manifest.json" not in names:
+                  raise SystemExit("Embedded story is missing game-manifest.json")
+          print("Embedded .storygame archive passed integrity verification.")
+          PY
+          rm -f "$TMP_STORY"
+          {
+            echo "### Standalone APK verification"
+            echo "- Application ID: `$APPLICATION_ID`"
+            echo "- App label: `$GAME_TITLE`"
+            echo "- Version: `$GAME_VERSION_NAME ($GAME_VERSION_CODE)`"
+            echo "- Embedded story archive: verified"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Generate APK checksum and build metadata
         run: |
           APK="player/build/outputs/apk/debug/player-debug.apk"
