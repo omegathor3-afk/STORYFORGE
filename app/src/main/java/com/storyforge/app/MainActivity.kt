@@ -301,6 +301,37 @@ class MainActivity : ComponentActivity() {
                                     OutlinedButton(onClick = { page = 0 }) { Text("العودة للمكتبة") }
                                 } else {
                                     Text(current.title, color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                    val storyIssues = diagnoseStory(current)
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(containerColor = Panel),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically) {
+                                                Text("فحص القصة", color = Gold, fontWeight = FontWeight.Bold)
+                                                Text("${storyIssues.count { it.isError }} أخطاء • ${storyIssues.count { !it.isError }} تنبيهات",
+                                                    color = if (storyIssues.any { it.isError }) Color(0xFFE18B83) else Color(0xFF8CBAA5),
+                                                    fontSize = 11.sp)
+                                            }
+                                            if (storyIssues.isEmpty()) {
+                                                Text("✓ بنية القصة سليمة مبدئيًا.", color = Color(0xFF8CBAA5), fontSize = 12.sp)
+                                            } else {
+                                                storyIssues.take(10).forEach { issue ->
+                                                    Text(
+                                                        "${if (issue.isError) "● خطأ" else "● تنبيه"}: ${issue.message}",
+                                                        color = if (issue.isError) Color(0xFFE18B83) else Muted,
+                                                        fontSize = 12.sp,
+                                                        modifier = if (issue.sceneId != null) Modifier.clickable { selectedSceneId = issue.sceneId } else Modifier
+                                                    )
+                                                }
+                                                if (storyIssues.size > 10) {
+                                                    Text("هناك ${storyIssues.size - 10} ملاحظات أخرى.", color = Muted, fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+                                    }
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         OutlinedButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), modifier = Modifier.weight(1f)) {
                                             Text("↶ تراجع")

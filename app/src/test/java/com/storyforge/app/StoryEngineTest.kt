@@ -92,6 +92,60 @@ class StoryEngineTest {
         }
     }
 
+
+    @Test
+    fun diagnosticsFindBrokenTargetsAndMalformedRules() {
+        val project = StoryProject(
+            id = "diagnostic",
+            title = "تشخيص",
+            variables = listOf(StoryVariable("keys")),
+            scenes = listOf(StoryScene(
+                id = "start",
+                choices = listOf("افتح"),
+                choiceTargets = listOf("missing"),
+                choiceConditions = listOf("keys => 1"),
+                choiceEffects = listOf("keys++1")
+            ))
+        )
+        val codes = diagnoseStory(project).map { it.code }.toSet()
+        assertTrue(codes.contains("missing-target"))
+        assertTrue(codes.contains("malformed-condition"))
+        assertTrue(codes.contains("malformed-effect"))
+        assertTrue(codes.contains("missing-ending"))
+    }
+
+    @Test
+    fun diagnosticsDetectUnreachableScenesAndDuplicateVariables() {
+        val project = StoryProject(
+            id = "diagnostic",
+            title = "تشخيص",
+            variables = listOf(StoryVariable("trust"), StoryVariable("trust")),
+            scenes = listOf(
+                StoryScene(id = "start", choices = emptyList()),
+                StoryScene(id = "lost", title = "مشهد ضائع", choices = emptyList())
+            )
+        )
+        val codes = diagnoseStory(project).map { it.code }.toSet()
+        assertTrue(codes.contains("unreachable-scene"))
+        assertTrue(codes.contains("duplicate-variable"))
+    }
+
+    @Test
+    fun diagnosticsAcceptAValidEnding() {
+        val project = StoryProject(
+            id = "valid",
+            title = "سليمة",
+            variables = listOf(StoryVariable("keys")),
+            scenes = listOf(StoryScene(
+                id = "start",
+                choices = listOf("النهاية"),
+                choiceTargets = listOf("__END__"),
+                choiceConditions = listOf("keys>=0")
+            ))
+        )
+        assertTrue(diagnoseStory(project).isEmpty())
+    }
+
     @Test
     fun blankConditionAlwaysAllowsChoice() {
         assertTrue(evaluateStoryCondition("", mapOf("keys" to 0)))
