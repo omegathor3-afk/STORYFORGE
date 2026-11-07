@@ -40,7 +40,7 @@ private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
 private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?)
-private data class Game(val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?)
+private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?)
 
 class PlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -135,7 +135,7 @@ class PlayerActivity : ComponentActivity() {
                 }
                 val cover = assetFiles.firstOrNull { it.mime.startsWith("image/") && it.sceneId == null }?.let { File(root,it.path) }
                     ?: assetFiles.firstOrNull { it.mime.startsWith("image/") }?.let { File(root,it.path) }
-                game = Game(p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover)
+                game = Game(p.optString("id",manifest.optString("projectId")),p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover)
                 errorMessage = null
             }.onFailure { errorMessage = it.message ?: "تعذر فتح اللعبة" }
         }
@@ -157,10 +157,29 @@ class PlayerActivity : ComponentActivity() {
     }
 
     @Composable private fun GameExperience(game: Game) {
-        var intro by remember(game.title) { mutableStateOf(true) }
-        var sceneId by remember(game.title) { mutableStateOf(game.scenes.firstOrNull()?.id) }
-        var values by remember(game.title) { mutableStateOf(game.variables) }
+        val progressPrefs = remember(game.projectId) { getSharedPreferences("storyforge_player_progress", MODE_PRIVATE) }
+        val savedProgress = remember(game.projectId) {
+            runCatching { JSONObject(progressPrefs.getString(game.projectId, "{}") ?: "{}") }.getOrDefault(JSONObject())
+        }
+        var intro by remember(game.projectId) { mutableStateOf(true) }
+        var sceneId by remember(game.projectId) {
+            val savedScene = savedProgress.optString("sceneId", game.scenes.firstOrNull()?.id)
+            mutableStateOf(if (savedScene == "__END__" || game.scenes.any { it.id == savedScene }) savedScene else game.scenes.firstOrNull()?.id)
+        }
+        var values by remember(game.projectId) {
+            val savedValues = savedProgress.optJSONObject("values")
+            val restored = game.variables.toMutableMap()
+            if (savedValues != null) savedValues.keys().forEach { key -> restored[key] = savedValues.optInt(key, restored[key] ?: 0) }
+            mutableStateOf(restored.toMap())
+        }
         var revealed by remember { mutableIntStateOf(0) }
+        LaunchedEffect(game.projectId, sceneId, values) {
+            val savedValues = JSONObject()
+            values.forEach { (key,value) -> savedValues.put(key,value) }
+            progressPrefs.edit().putString(game.projectId, JSONObject()
+                .put("sceneId", sceneId ?: JSONObject.NULL)
+                .put("values", savedValues).toString()).apply()
+        }
         var audioPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
         var audioPlaying by remember { mutableStateOf(false) }
         val scene = game.scenes.firstOrNull { it.id == sceneId }
@@ -214,7 +233,7 @@ class PlayerActivity : ComponentActivity() {
             } else if(ended) {
                 Spacer(Modifier.weight(1f))
                 Text("انتهت الحكاية",color=Gold,fontSize=28.sp,fontWeight=FontWeight.Bold,modifier=Modifier.align(Alignment.CenterHorizontally))
-                Button(onClick={sceneId=game.scenes.firstOrNull()?.id;values=game.variables},modifier=Modifier.fillMaxWidth()) { Text("إعادة اللعب") }
+                Button(onClick={sceneId=game.scenes.firstOrNull()?.id;values=game.variables;progressPrefs.edit().remove(game.projectId).apply()},modifier=Modifier.fillMaxWidth()) { Text("إعادة اللعب من البداية") }
                 Spacer(Modifier.weight(1f))
             } else {
                 LinearProgressIndicator(progress={ (game.scenes.indexOf(scene!!)+1).toFloat()/game.scenes.size.coerceAtLeast(1) },modifier=Modifier.fillMaxWidth())
