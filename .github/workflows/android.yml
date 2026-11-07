@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror ]
+    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror, feature/standalone-apk-pipeline ]
   workflow_dispatch:
 
 jobs:
@@ -17,6 +17,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate standalone build script syntax
+        run: |
+          python3 -m py_compile scripts/prepare_standalone_game.py scripts/test_prepare_standalone_game.py scripts/create_ci_storygame_fixture.py
+          python3 -m unittest discover -s scripts -p "test_*.py" -v
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -35,6 +40,75 @@ jobs:
       - name: Build with Gradle
         run: gradle --no-daemon :app:assembleDebug :player:assembleDebug :academy:assembleDebug
 
+      - name: Preserve generic Player APK
+        run: cp player/build/outputs/apk/debug/player-debug.apk player/build/outputs/apk/debug/player-generic-debug.apk
+
+      - name: Create standalone story fixture
+        run: python3 scripts/create_ci_storygame_fixture.py
+
+      - name: Embed standalone story fixture
+        env:
+          STORYGAME_LOCAL_PATH: .ci-fixture.storygame
+          GAME_TITLE: CI Story Game
+          APPLICATION_ID: com.storyforge.games.ci
+          GAME_VERSION_NAME: 1.2.3
+          GAME_VERSION_CODE: "2"
+        run: python3 scripts/prepare_standalone_game.py
+
+      - name: Build and verify standalone APK configuration
+        run: |
+          gradle --no-daemon :player:assembleDebug \
+            -PgameApplicationId="$APPLICATION_ID" \
+            -PgameDisplayName="$GAME_TITLE" \
+            -PgameVersionName="$GAME_VERSION_NAME" \
+            -PgameVersionCode="$GAME_VERSION_CODE"
+          cp player/build/outputs/apk/debug/player-debug.apk player/build/outputs/apk/debug/player-standalone-ci.apk
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -n 1)"
+          "$AAPT" dump badging player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "package: name='com.storyforge.games.ci'"
+          "$AAPT" dump badging player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "application-label:'CI Story Game'"
+          unzip -l player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "assets/default.storygame"
+
+      - name: Create temporary CI Release signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYSTORE_PATH="$RUNNER_TEMP/storyforge-ci-upload.jks"
+          keytool -genkeypair -noprompt \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass "ci-store-password" \
+            -keypass "ci-key-password" \
+            -alias "storyforge-ci" \
+            -dname "CN=STORYFORGE CI" \
+            -validity 2 -keyalg RSA -keysize 2048
+          chmod 600 "$KEYSTORE_PATH"
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "ANDROID_STORE_PASSWORD=ci-store-password"
+            echo "ANDROID_KEY_ALIAS=storyforge-ci"
+            echo "ANDROID_KEY_PASSWORD=ci-key-password"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and verify signed standalone Release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :player:assembleRelease \
+            -PgameApplicationId="$APPLICATION_ID" \
+            -PgameDisplayName="$GAME_TITLE" \
+            -PgameVersionName="$GAME_VERSION_NAME" \
+            -PgameVersionCode="$GAME_VERSION_CODE"
+          APK="player/build/outputs/apk/release/player-release.apk"
+          test -s "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.storyforge.games.ci'"
+          "$AAPT" dump badging "$APK" | grep -F "application-label:'CI Story Game'"
+          "$AAPT" dump badging "$APK" | grep -F "versionName='1.2.3'"
+          unzip -Z1 "$APK" | grep -Fx 'assets/default.storygame'
+          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --print-certs "$APK"
+          cp "$APK" player/build/outputs/apk/release/player-standalone-ci-release.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -42,4 +116,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             player/build/outputs/apk/debug/player-debug.apk
+            player/build/outputs/apk/debug/player-generic-debug.apk
+            player/build/outputs/apk/debug/player-standalone-ci.apk
+            player/build/outputs/apk/release/player-standalone-ci-release.apk
             academy/build/outputs/apk/debug/academy-debug.apk

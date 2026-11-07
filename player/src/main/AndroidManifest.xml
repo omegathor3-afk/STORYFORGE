@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:allowBackup="false"
-        android:label="STORYFORGE PLAYER"
+        android:icon="@drawable/game_icon"
+        android:roundIcon="@drawable/game_icon"
+        android:label="${gameDisplayName}"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity android:name=".PlayerActivity" android:exported="true">

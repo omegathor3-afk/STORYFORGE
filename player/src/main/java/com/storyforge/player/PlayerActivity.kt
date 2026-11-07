@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.io.File
+import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 private val Night = Color(0xFF05070B)
@@ -48,8 +49,62 @@ class PlayerActivity : ComponentActivity() {
         setContent { PlayerScreen() }
     }
 
+    private fun loadBundledGame(): Game? {
+        val bundled = runCatching { assets.open("default.storygame") }.getOrNull() ?: return null
+        val root = File(filesDir, "bundled_story").apply { deleteRecursively(); mkdirs() }
+        bundled.use { raw -> ZipInputStream(raw.buffered()).use { zip ->
+            var count = 0; var total = 0L
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                count++
+                require(count <= 500) { "حزمة اللعبة تحتوي على ملفات كثيرة" }
+                val name = entry.name
+                require(!name.startsWith("/") && !name.contains(92.toChar()) && name.split('/').none { it.isBlank() || it == "." || it == ".." }) { "مسار غير آمن" }
+                if (entry.isDirectory) { zip.closeEntry(); continue }
+                val relative = if (name.startsWith("assets/")) name.removePrefix("assets/") else name
+                require(relative == "game-manifest.json" || relative == "storyforge-project.json" || relative.startsWith("storyforge_assets/")) { "ملف غير مدعوم" }
+                val target = File(root, relative).canonicalFile
+                require(target.path.startsWith(root.canonicalPath + File.separator))
+                target.parentFile?.mkdirs()
+                target.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(8192); var entryBytes = 0L
+                    while (true) { val n = zip.read(buffer); if (n < 0) break; entryBytes += n; total += n; require(entryBytes <= 20L*1024*1024 && total <= 100L*1024*1024) { "حجم الحزمة أكبر من الحد الآمن" }; output.write(buffer,0,n) }
+                }
+                zip.closeEntry()
+            }
+        } }
+        val manifest = JSONObject(File(root, "game-manifest.json").readText())
+        require(manifest.optString("format") == "storyforge-game" && manifest.optInt("formatVersion") == 1) { "إصدار الحزمة غير مدعوم" }
+        val projects = org.json.JSONArray(File(root, "storyforge-project.json").readText())
+        require(projects.length() == 1) { "الحزمة يجب أن تحتوي قصة واحدة" }
+        val project = projects.getJSONObject(0)
+        val assetsJson = project.optJSONArray("assets")
+        data class AssetFile(val path: String, val mime: String, val sceneId: String?)
+        val assetFiles = (0 until (assetsJson?.length() ?: 0)).mapNotNull { i ->
+            val a = assetsJson!!.getJSONObject(i); val path = a.optString("relativePath")
+            if (!path.startsWith("storyforge_assets/") || path.split('/').any { it.isBlank() || it == "." || it == ".." }) null
+            else AssetFile(path, a.optString("mimeType"), if (a.isNull("sceneId")) null else a.optString("sceneId"))
+        }.filter { val f = File(root, it.path).canonicalFile; f.path.startsWith(root.canonicalPath + File.separator) && f.isFile }
+        val sceneArray = project.optJSONArray("scenes") ?: org.json.JSONArray()
+        val scenes = (0 until sceneArray.length()).map { index ->
+            val s = sceneArray.getJSONObject(index); val choicesJson = s.optJSONArray("choices") ?: org.json.JSONArray()
+            val targets = s.optJSONArray("choiceTargets"); val conditions = s.optJSONArray("choiceConditions"); val effects = s.optJSONArray("choiceEffects")
+            val choices = (0 until choicesJson.length()).map { i -> Choice(choicesJson.optString(i), targets?.let { if (it.isNull(i)) null else it.optString(i) }, conditions?.optString(i).orEmpty(), effects?.optString(i).orEmpty()) }
+            val dialogue = s.optJSONArray("dialogues")
+            val lines = (0 until (dialogue?.length() ?: 0)).map { i -> val d = dialogue!!.getJSONObject(i); d.optString("speaker") to d.optString("text") }
+            val id = s.optString("id")
+            val image = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("image/") }?.let { File(root, it.path) }
+            val audio = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("audio/") }?.let { File(root, it.path) }
+            Scene(id, s.optString("title"), s.optString("text"), choices, lines, image, audio, s.optInt("choiceTimerSeconds", 0).coerceIn(0,300), s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0))
+        }
+        val variables = linkedMapOf<String, Int>(); val vars = project.optJSONArray("variables")
+        for (i in 0 until (vars?.length() ?: 0)) { val v = vars!!.getJSONObject(i); variables[v.optString("name")] = v.optInt("initialValue") }
+        val cover = assetFiles.firstOrNull { it.mime.startsWith("image/") && it.sceneId == null }?.let { File(root,it.path) } ?: assetFiles.firstOrNull { it.mime.startsWith("image/") }?.let { File(root,it.path) }
+        return Game(project.optString("id", manifest.optString("projectId")), project.optString("title", manifest.optString("title")), project.optString("description"), scenes, variables, cover)
+    }
+
     @Composable private fun PlayerScreen() {
-        var game by remember { mutableStateOf<Game?>(null) }
+        var game by remember { mutableStateOf(runCatching { loadBundledGame() }.getOrNull()) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) runCatching {
