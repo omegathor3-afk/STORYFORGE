@@ -365,6 +365,40 @@ class MainActivity : ComponentActivity() {
                                                 })
                                             }
                                         }) { Text("＋ إضافة اختيار") }
+                                        val scenePosition = current.scenes.indexOfFirst { it.id == scene.id }
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically) {
+                                            OutlinedButton(onClick = {
+                                                val duplicate = scene.copy(id = UUID.randomUUID().toString(),
+                                                    title = "نسخة من ${scene.title}".take(80))
+                                                updateProject(current.id) { p ->
+                                                    val list = p.scenes.toMutableList()
+                                                    list.add((scenePosition + 1).coerceAtMost(list.size), duplicate)
+                                                    p.copy(scenes = list)
+                                                }
+                                                selectedSceneId = duplicate.id
+                                            }, modifier = Modifier.weight(1f)) { Text("نسخ المشهد") }
+                                            OutlinedButton(onClick = {
+                                                updateProject(current.id) { p ->
+                                                    val list = p.scenes.toMutableList()
+                                                    if (scenePosition > 0) {
+                                                        val item = list.removeAt(scenePosition)
+                                                        list.add(scenePosition - 1, item)
+                                                    }
+                                                    p.copy(scenes = list)
+                                                }
+                                            }, enabled = scenePosition > 0) { Text("↑") }
+                                            OutlinedButton(onClick = {
+                                                updateProject(current.id) { p ->
+                                                    val list = p.scenes.toMutableList()
+                                                    if (scenePosition in 0 until list.lastIndex) {
+                                                        val item = list.removeAt(scenePosition)
+                                                        list.add(scenePosition + 1, item)
+                                                    }
+                                                    p.copy(scenes = list)
+                                                }
+                                            }, enabled = scenePosition in 0 until current.scenes.lastIndex) { Text("↓") }
+                                        }
                                         if (current.scenes.size > 1) {
                                             TextButton(onClick = {
                                                 val remaining = current.scenes.filterNot { it.id == scene.id }
