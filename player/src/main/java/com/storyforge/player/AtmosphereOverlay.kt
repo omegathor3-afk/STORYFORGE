@@ -19,7 +19,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 @Composable
-private fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: Modifier = Modifier) {
+internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "darkwood-atmosphere")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "drift")
     val active = effects.toSet() + when (theme) {
