@@ -11,6 +11,12 @@ val generatedDisplayName = providers.gradleProperty("gameDisplayName")
 val generatedVersionName = providers.gradleProperty("gameVersionName").orElse("1.0.0").get()
 val generatedVersionCode = providers.gradleProperty("gameVersionCode").orElse("1").get().toIntOrNull() ?: error("gameVersionCode must be numeric")
 
+val signingStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val signingStorePassword = System.getenv("ANDROID_STORE_PASSWORD")
+val signingKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val signingKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+val releaseSigningConfigured = listOf(signingStorePath, signingStorePassword, signingKeyAlias, signingKeyPassword).all { !it.isNullOrBlank() }
+
 require(generatedApplicationId.matches(Regex("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}"))) {
     "gameApplicationId must be a valid Android application ID"
 }
@@ -30,6 +36,24 @@ android {
         targetSdk = 35
         versionCode = generatedVersionCode
         versionName = generatedVersionName
+    }
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(signingStorePath!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
     buildFeatures { compose = true }
     compileOptions {

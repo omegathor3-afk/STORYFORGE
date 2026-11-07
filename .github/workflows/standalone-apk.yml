@@ -29,6 +29,14 @@ on:
         required: false
         default: "1"
         type: string
+      build_type:
+        description: Debug for testing, Release for signed distribution
+        required: true
+        default: debug
+        type: choice
+        options:
+          - debug
+          - release
 
 permissions:
   contents: read
@@ -62,27 +70,76 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build dedicated game APK
+      - name: Prepare secure Release signing key
+        if: inputs.build_type == 'release'
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          gradle --no-daemon :player:assembleDebug \
-            -PgameApplicationId="$APPLICATION_ID" \
-            -PgameDisplayName="$GAME_TITLE" \
-            -PgameVersionName="$GAME_VERSION_NAME" \
-            -PgameVersionCode="$GAME_VERSION_CODE"
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing GitHub Actions secret for Release signing: $name (configure all ANDROID_* signing secrets)."
+              exit 1
+            fi
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/storyforge-upload.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          chmod 600 "$KEYSTORE_PATH"
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "ANDROID_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
 
-      - name: Verify standalone APK identity and embedded story
+      - name: Build dedicated game APK
+        id: build
         shell: bash
         run: |
           set -euo pipefail
-          APK="player/build/outputs/apk/debug/player-debug.apk"
+          if [[ "${{ inputs.build_type }}" == "release" ]]; then
+            gradle --no-daemon :player:assembleRelease \
+              -PgameApplicationId="$APPLICATION_ID" \
+              -PgameDisplayName="$GAME_TITLE" \
+              -PgameVersionName="$GAME_VERSION_NAME" \
+              -PgameVersionCode="$GAME_VERSION_CODE"
+            echo "apk_path=player/build/outputs/apk/release/player-release.apk" >> "$GITHUB_OUTPUT"
+          else
+            gradle --no-daemon :player:assembleDebug \
+              -PgameApplicationId="$APPLICATION_ID" \
+              -PgameDisplayName="$GAME_TITLE" \
+              -PgameVersionName="$GAME_VERSION_NAME" \
+              -PgameVersionCode="$GAME_VERSION_CODE"
+            echo "apk_path=player/build/outputs/apk/debug/player-debug.apk" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify standalone APK identity and embedded story
+        shell: bash
+        env:
+          APK_PATH: ${{ steps.build.outputs.apk_path }}
+        run: |
+          set -euo pipefail
+          APK="$APK_PATH"
           test -s "$APK"
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$AAPT"
+          test -n "$APKSIGNER"
           BADGING="$("$AAPT" dump badging "$APK")"
-          printf '%s\n' "$BADGING" | grep -F "package: name='$APPLICATION_ID'"
-          printf '%s\n' "$BADGING" | grep -F "application-label:'$GAME_TITLE'"
-          printf '%s\n' "$BADGING" | grep -F "versionName='$GAME_VERSION_NAME'"
+          printf '%s\\n' "$BADGING" | grep -F "package: name='$APPLICATION_ID'"
+          printf '%s\\n' "$BADGING" | grep -F "application-label:'$GAME_TITLE'"
+          printf '%s\\n' "$BADGING" | grep -F "versionName='$GAME_VERSION_NAME'"
           unzip -Z1 "$APK" | grep -Fx 'assets/default.storygame'
+          "$APKSIGNER" verify --verbose "$APK"
+          if [[ "${{ inputs.build_type }}" == "release" ]]; then
+            "$APKSIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/signing-report.txt"
+          fi
           TMP_STORY="$(mktemp)"
           unzip -p "$APK" assets/default.storygame > "$TMP_STORY"
           python3 - "$TMP_STORY" <<'PY'
@@ -100,31 +157,38 @@ jobs:
           rm -f "$TMP_STORY"
           {
             echo "### Standalone APK verification"
+            echo "- Build type: ${{ inputs.build_type }}"
             echo "- Application ID: `$APPLICATION_ID`"
             echo "- App label: `$GAME_TITLE`"
             echo "- Version: `$GAME_VERSION_NAME ($GAME_VERSION_CODE)`"
+            echo "- APK signature: verified"
             echo "- Embedded story archive: verified"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate APK checksum and build metadata
+        shell: bash
+        env:
+          APK_PATH: ${{ steps.build.outputs.apk_path }}
         run: |
-          APK="player/build/outputs/apk/debug/player-debug.apk"
-          sha256sum "$APK" > player/build/outputs/apk/debug/SHA256SUMS.txt
+          set -euo pipefail
+          APK="$APK_PATH"
+          sha256sum "$APK" > "$(dirname "$APK")/SHA256SUMS.txt"
           {
             echo "Game: $GAME_TITLE"
             echo "Application ID: $APPLICATION_ID"
             echo "Version: $GAME_VERSION_NAME ($GAME_VERSION_CODE)"
+            echo "Build type: ${{ inputs.build_type }}"
             echo "SHA-256:"
-            cat player/build/outputs/apk/debug/SHA256SUMS.txt
-          } > player/build/outputs/apk/debug/BUILD-INFO.txt
+            cat "$(dirname "$APK")/SHA256SUMS.txt"
+          } > "$(dirname "$APK")/BUILD-INFO.txt"
 
       - name: Publish standalone APK
         uses: actions/upload-artifact@v4
         with:
-          name: STORYFORGE-GAME-${{ github.run_number }}
+          name: STORYFORGE-GAME-${{ github.run_number }}-${{ inputs.build_type }}
           path: |
-            player/build/outputs/apk/debug/player-debug.apk
-            player/build/outputs/apk/debug/SHA256SUMS.txt
-            player/build/outputs/apk/debug/BUILD-INFO.txt
+            ${{ steps.build.outputs.apk_path }}
+            player/build/outputs/apk/${{ inputs.build_type }}/SHA256SUMS.txt
+            player/build/outputs/apk/${{ inputs.build_type }}/BUILD-INFO.txt
           if-no-files-found: error
           retention-days: 30
