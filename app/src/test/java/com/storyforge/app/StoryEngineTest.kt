@@ -121,7 +121,11 @@ class StoryEngineTest {
             title = "تشخيص",
             variables = listOf(StoryVariable("trust"), StoryVariable("trust")),
             scenes = listOf(
-                StoryScene(id = "start", choices = emptyList()),
+                StoryScene(
+                    id = "start",
+                    choices = listOf("إنهاء القصة"),
+                    choiceTargets = listOf("__END__")
+                ),
                 StoryScene(id = "lost", title = "مشهد ضائع", choices = emptyList())
             )
         )
