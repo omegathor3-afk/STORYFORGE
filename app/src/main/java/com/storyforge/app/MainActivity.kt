@@ -594,6 +594,28 @@ class MainActivity : ComponentActivity() {
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
                                         FieldLabel("مؤثرات الجو لهذا المشهد")
                                         Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
+                                        Text("تركيبات أجواء جاهزة", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        val atmospherePresets = listOf(
+                                            "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "vignette"),
+                                            "مطر المطاردة" to setOf("heavy_rain", "fog", "black_shadows", "lightning", "crows", "vignette"),
+                                            "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow"),
+                                            "ليلة القمر" to setOf("moon_glow", "light_shafts", "fireflies", "watching_eyes", "fog", "vignette")
+                                        )
+                                        atmospherePresets.chunked(2).forEach { presetRow ->
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                presetRow.forEach { (presetName, presetEffects) ->
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(atmosphereEffects = presetEffects.toList(), atmosphereIntensity = 0.86f) else item
+                                                            }) }
+                                                        },
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                                    ) { Text(presetName, fontSize = 11.sp) }
+                                                }
+                                            }
+                                        }
                                         val effectOptions = listOf("rain" to "🌧 مطر", "heavy_rain" to "⛈ مطر غزير", "fog" to "🌫 ضباب", "dense_fog" to "ضباب كثيف", "ash" to "رماد متساقط", "dust" to "غبار", "fireflies" to "يراعات", "spores" to "أبواغ فطرية", "embers" to "جمر متطاير", "snow" to "ثلج", "black_shadows" to "ظلال عابرة", "blood_mist" to "ضباب دموي", "wind" to "رياح", "dead_leaves" to "أوراق ميتة", "branches" to "ظلال أغصان مكسورة", "dead_forest" to "غابة ميتة متعددة الطبقات", "lightning" to "برق بعيد", "crows" to "غربان عابرة", "watching_eyes" to "عيون تراقب من الظلام", "moths" to "عثّ ليلي", "insects" to "حشرات طائرة", "ground_fog" to "ضباب يزحف على الأرض", "distant_glow" to "وهج بعيد بين الأشجار", "distant_forest" to "غابة بعيدة متعددة الطبقات", "moon_glow" to "وهج قمر خافت", "light_shafts" to "أشعة ضوء بين الأشجار", "vignette" to "ظلام يحيط بأطراف المشهد", "floating_dust" to "غبار مضاء في الهواء")
                                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             effectOptions.chunked(2).forEach { rowOptions ->
@@ -942,9 +964,11 @@ class MainActivity : ComponentActivity() {
                                             Box(Modifier.fillMaxWidth().height(220.dp).background(Color(0xFF101712))) {
                                                 if (sceneBitmap != null) Image(bitmap = sceneBitmap, contentDescription = "خلفية المشهد",
                                                     modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "far", modifier = Modifier.fillMaxSize())
                                                 SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = false, modifier = Modifier.fillMaxSize())
                                                 AtmosphereOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, intensity = previewScene.atmosphereIntensity, modifier = Modifier.fillMaxSize())
                                                 SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = true, modifier = Modifier.fillMaxSize())
+                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "near", modifier = Modifier.fillMaxSize())
                                             }
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
