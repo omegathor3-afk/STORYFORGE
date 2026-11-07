@@ -33,10 +33,12 @@ jobs:
         run: gradle --no-daemon :app:testDebugUnitTest
 
       - name: Build with Gradle
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleDebug :player:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: STORYFORGE-and-PLAYER-debug-apks
-          path: |\n            app/build/outputs/apk/debug/app-debug.apk\n            player/build/outputs/apk/debug/player-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            player/build/outputs/apk/debug/player-debug.apk
