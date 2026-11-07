@@ -26,6 +26,19 @@ private data class GuideLesson(
     val tip: String
 )
 
+private data class GuideQuiz(val question: String, val options: List<String>, val correct: Int)
+
+private val guideQuizzes = listOf(
+    GuideQuiz("ما أفضل بداية لمشروع قصصي؟", listOf("كتابة كل النهايات فورًا", "تحديد فكرة العالم ثم إنشاء مشاهد قليلة", "إضافة مؤثرات كثيرة"), 1),
+    GuideQuiz("ما وظيفة المشهد؟", listOf("تمثيل مكان أو لحظة في القصة", "حفظ كلمة المرور", "تغيير لغة الهاتف"), 0),
+    GuideQuiz("كيف تجعل الحوار أوضح؟", listOf("جمع كل الكلام في فقرة", "حذف أسماء المتحدثين", "إضافة سطر مستقل لكل متحدث"), 2),
+    GuideQuiz("ماذا يفعل الاختيار المرتبط بوجهة؟", listOf("ينقل اللاعب إلى مشهد مستهدف", "يحذف المشروع", "يعيد ضبط الهاتف"), 0),
+    GuideQuiz("متى يظهر اختيار عليه شرط trust>=1؟", listOf("دائمًا", "عندما تكون قيمة trust واحدًا أو أكثر", "عندما تكون القيمة صفرًا فقط"), 1),
+    GuideQuiz("ما الذي يضيفه ملف الصوت للمشهد؟", listOf("يغير وجهة الاختيار", "يصنع خلفية صوتية أو مؤثرًا", "ينشئ متغيرًا تلقائيًا"), 1),
+    GuideQuiz("ما أفضل طريقة لاكتشاف مسار مكسور؟", listOf("تجربة الاختيارات والنهايات من المعاينة", "تغيير لون التطبيق", "إغلاق المشروع دون حفظ"), 0),
+    GuideQuiz("هل ملف .storygame هو APK مستقل؟", listOf("نعم، دائمًا", "لا، هو حزمة محتوى تُفتح في Player", "هو ملف صورة"), 1)
+)
+
 private val guideLessons = listOf(
     GuideLesson("ابدأ مشروعك الأول", "دقيقتان", "أنشئ عالم قصتك وحدد فكرته قبل كتابة التفاصيل.",
         listOf("افتح تبويب المكتبة واضغط إنشاء مشروع جديد.", "اكتب عنوانًا واضحًا ووصفًا قصيرًا للعالم.", "افتح المشروع من المكتبة للانتقال إلى الاستوديو."),
@@ -62,6 +75,8 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
         saved.mapNotNull { it.toIntOrNull() }.filter { it in guideLessons.indices }.forEach { add(it) }
     } }
     var selected by remember { mutableIntStateOf(-1) }
+    var quizAnswer by remember(selected) { mutableIntStateOf(-1) }
+    var quizChecked by remember(selected) { mutableStateOf(false) }
     val progress = completed.size.toFloat() / guideLessons.size.toFloat()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("أكاديمية STORYFORGE", color = Color(0xFFD6B477), fontSize = 23.sp, fontWeight = FontWeight.Bold)
@@ -98,6 +113,31 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
                     Text("مهمتك الآن", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold)
                     Text(lesson.task, color = Color.White, lineHeight = 22.sp)
                     Text("نصيحة: ${lesson.tip}", color = Color(0xFF91C8D7), fontSize = 12.sp, lineHeight = 20.sp)
+                    val quiz = guideQuizzes[selected]
+                    Divider(color = Color(0xFF343B43))
+                    Text("اختبر فهمك", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold)
+                    Text(quiz.question, color = Color.White, lineHeight = 22.sp)
+                    quiz.options.forEachIndexed { optionIndex, option ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { quizAnswer = optionIndex; quizChecked = false },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = quizAnswer == optionIndex, onClick = { quizAnswer = optionIndex; quizChecked = false })
+                            Text(option, color = Color(0xFFE1E4EA), lineHeight = 20.sp)
+                        }
+                    }
+                    if (quizChecked) {
+                        Text(
+                            if (quizAnswer == quiz.correct) "إجابة صحيحة! أحسنت." else "ليست الإجابة الصحيحة. راجع الدرس وحاول مرة أخرى.",
+                            color = if (quizAnswer == quiz.correct) Color(0xFF8CBAA5) else Color(0xFFE18B83),
+                            fontSize = 12.sp
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { quizChecked = true },
+                        enabled = quizAnswer >= 0,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("تحقق من الإجابة") }
                     Button(onClick = {
                         if (!completed.contains(selected)) completed.add(selected)
                         prefs.edit().putStringSet("completed_lessons", completed.map { it.toString() }.toSet()).apply()
