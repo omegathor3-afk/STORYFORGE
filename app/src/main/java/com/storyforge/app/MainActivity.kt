@@ -343,7 +343,8 @@ class MainActivity : ComponentActivity() {
                                             }) { Text("حذف الاختيار", color = Color(0xFFE18B83), fontSize = 11.sp) }
                                             TextButton(onClick = {
                                                 val destinations = current.scenes.map { it.id } + "__END__"
-                                                val next = if (target == null) destinations.first()
+                                                val currentSceneIndex = current.scenes.indexOfFirst { it.id == scene.id }
+                                                val next = if (target == null) destinations[(currentSceneIndex + 1).coerceIn(0, destinations.lastIndex)]
                                                     else destinations[(destinations.indexOf(target).coerceAtLeast(-1) + 1) % destinations.size]
                                                 updateProject(current.id) { p ->
                                                     p.copy(scenes = p.scenes.map { s ->
