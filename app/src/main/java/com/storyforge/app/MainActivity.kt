@@ -362,6 +362,13 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
                                             }
+                                            if (previewScene.choices.any { it.isNotBlank() } &&
+                                                previewScene.choices.indices.none { i ->
+                                                    previewScene.choices[i].isNotBlank() &&
+                                                        evaluateStoryCondition(previewScene.choiceConditions.getOrNull(i).orEmpty(), previewValues)
+                                                }) {
+                                                Text("لا يوجد اختيار متاح حاليًا. شروط هذا المشهد لا تتحقق بالقيم الحالية.", color = Gold, fontSize = 13.sp)
+                                            }
                                             if (previewScene.choices.none { it.isNotBlank() }) {
                                                 Button(onClick = {
                                                     if (previewIndex < current.scenes.lastIndex) {
@@ -442,7 +449,7 @@ class MainActivity : ComponentActivity() {
                     title = { Text("إضافة متغير للقصة") },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(variableName, { variableName = it.trim().replace(" ", "_") },
+                            OutlinedTextField(variableName, { variableName = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' } },
                                 label = { Text("اسم المتغير (بدون مسافات)") }, singleLine = true)
                             OutlinedTextField(variableValue, { variableValue = it.filter { ch -> ch == '-' || ch.isDigit() } },
                                 label = { Text("القيمة الابتدائية") }, singleLine = true)
@@ -597,7 +604,7 @@ private fun loadProjects(prefs: android.content.SharedPreferences): List<StoryPr
 
 private fun evaluateStoryCondition(expression: String, values: Map<String, Int>): Boolean {
     if (expression.isBlank()) return true
-    val match = Regex("^([A-Za-z0-9_]+)\\s*(>=|<=|==|!=|>|<)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return false
+    val match = Regex("^([\\p{L}A-Za-z0-9_]+)\\s*(>=|<=|==|!=|>|<)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return false
     val actual = values[match.groupValues[1]] ?: 0
     val expected = match.groupValues[3].toIntOrNull() ?: return false
     return when (match.groupValues[2]) {
@@ -613,7 +620,7 @@ private fun evaluateStoryCondition(expression: String, values: Map<String, Int>)
 
 private fun applyStoryEffect(expression: String, values: Map<String, Int>): Map<String, Int> {
     if (expression.isBlank()) return values
-    val match = Regex("^([A-Za-z0-9_]+)\\s*(=|\\+=|-=)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return values
+    val match = Regex("^([\\p{L}A-Za-z0-9_]+)\\s*(=|\\+=|-=)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return values
     val name = match.groupValues[1]
     val amount = match.groupValues[3].toIntOrNull() ?: return values
     val old = values[name] ?: 0
