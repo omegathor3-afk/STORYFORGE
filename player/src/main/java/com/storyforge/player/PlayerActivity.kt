@@ -314,11 +314,11 @@ class PlayerActivity : ComponentActivity() {
                                 val bitmap=remember(file.absolutePath){BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()}
                                 bitmap?.let { Image(it,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop) }
                             } ?: Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF17211B), Night))))
-                            SceneDepthOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,layer="far",modifier=Modifier.fillMaxSize())
+                            SceneDepthOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,layer="far",intensity=scene.atmosphereIntensity,modifier=Modifier.fillMaxSize())
                             SceneEnvironmentOverlay(props=scene.environmentProps,foreground=false,modifier=Modifier.fillMaxSize())
                             AtmosphereOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,intensity=scene.atmosphereIntensity,modifier=Modifier.fillMaxSize())
                             SceneEnvironmentOverlay(props=scene.environmentProps,foreground=true,modifier=Modifier.fillMaxSize())
-                            SceneDepthOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,layer="near",modifier=Modifier.fillMaxSize())
+                            SceneDepthOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,layer="near",intensity=scene.atmosphereIntensity,modifier=Modifier.fillMaxSize())
                         }
                     }
                     Text(scene!!.title,color=Gold,fontSize=23.sp,fontWeight=FontWeight.Bold)

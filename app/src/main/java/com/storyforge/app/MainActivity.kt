@@ -1010,11 +1010,11 @@ class MainActivity : ComponentActivity() {
                                             Box(Modifier.fillMaxWidth().height(220.dp).background(Color(0xFF101712))) {
                                                 if (sceneBitmap != null) Image(bitmap = sceneBitmap, contentDescription = "خلفية المشهد",
                                                     modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "far", modifier = Modifier.fillMaxSize())
+                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "far", intensity = previewScene.atmosphereIntensity, modifier = Modifier.fillMaxSize())
                                                 SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = false, modifier = Modifier.fillMaxSize())
                                                 AtmosphereOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, intensity = previewScene.atmosphereIntensity, modifier = Modifier.fillMaxSize())
                                                 SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = true, modifier = Modifier.fillMaxSize())
-                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "near", modifier = Modifier.fillMaxSize())
+                                                SceneDepthOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, layer = "near", intensity = previewScene.atmosphereIntensity, modifier = Modifier.fillMaxSize())
                                             }
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
