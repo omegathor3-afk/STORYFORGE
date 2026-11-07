@@ -864,36 +864,33 @@ class MainActivity : ComponentActivity() {
 private fun AudioPreviewCard(title: String, filePath: String) {
     var player by remember(filePath) { mutableStateOf<MediaPlayer?>(null) }
     var prepared by remember(filePath) { mutableStateOf(false) }
+    var preparing by remember(filePath) { mutableStateOf(false) }
     var playing by remember(filePath) { mutableStateOf(false) }
     var failed by remember(filePath) { mutableStateOf(false) }
     var volume by remember(filePath) { mutableFloatStateOf(0.75f) }
 
     DisposableEffect(filePath) {
+        var disposed = false
         var activePlayer: MediaPlayer? = null
-        runCatching {
-            MediaPlayer().also { media ->
-                activePlayer = media
-                media.setOnPreparedListener {
-                    prepared = true
-                    it.setVolume(volume, volume)
-                }
-                media.setOnCompletionListener { playing = false }
-                media.setOnErrorListener { _, _, _ ->
-                    failed = true
-                    playing = false
-                    true
-                }
-                media.setDataSource(filePath)
-                media.prepareAsync()
-                player = media
-            }
-        }.onFailure { failed = true }
-        onDispose {
-            runCatching { activePlayer?.stop() }
-            runCatching { activePlayer?.release() }
+
+        fun releasePlayer() {
+            val media = activePlayer
+            activePlayer = null
             player = null
             prepared = false
+            preparing = false
             playing = false
+            if (media != null) {
+                runCatching { media.setOnPreparedListener(null) }
+                runCatching { media.setOnCompletionListener(null) }
+                runCatching { media.setOnErrorListener(null) }
+                runCatching { media.release() }
+            }
+        }
+
+        onDispose {
+            disposed = true
+            releasePlayer()
         }
     }
 
@@ -905,28 +902,65 @@ private fun AudioPreviewCard(title: String, filePath: String) {
                     Text("♫  $title", color = Gold, fontWeight = FontWeight.SemiBold)
                     Text(when {
                         failed -> "تعذر تشغيل الملف الصوتي"
-                        !prepared -> "جارٍ تجهيز الصوت..."
+                        preparing -> "جارٍ تجهيز الصوت..."
                         playing -> "يعمل الآن"
-                        else -> "جاهز للتشغيل"
+                        prepared -> "جاهز للتشغيل"
+                        else -> "اضغط لتشغيل الصوت"
                     }, color = Muted, fontSize = 11.sp)
                 }
                 Button(
                     onClick = {
-                        val media = player
-                        if (media != null && prepared && !failed) {
+                        val current = player
+                        if (current == null && !preparing && !failed) {
+                            preparing = true
+                            runCatching {
+                                MediaPlayer().also { media ->
+                                    player = media
+                                    media.setOnPreparedListener { ready ->
+                                        if (player === ready) {
+                                            prepared = true
+                                            preparing = false
+                                            runCatching { ready.setVolume(volume, volume); ready.start() }
+                                                .onSuccess { playing = true }
+                                                .onFailure { failed = true; playing = false }
+                                        }
+                                    }
+                                    media.setOnCompletionListener { completed ->
+                                        if (player === completed) playing = false
+                                    }
+                                    media.setOnErrorListener { broken, _, _ ->
+                                        if (player === broken) {
+                                            failed = true
+                                            preparing = false
+                                            prepared = false
+                                            playing = false
+                                        }
+                                        true
+                                    }
+                                    media.setDataSource(filePath)
+                                    media.prepareAsync()
+                                }
+                            }.onFailure {
+                                player?.let { runCatching { it.release() } }
+                                player = null
+                                preparing = false
+                                failed = true
+                            }
+                        } else if (current != null && prepared && !failed) {
                             runCatching {
                                 if (playing) {
-                                    media.pause()
+                                    current.pause()
                                     playing = false
                                 } else {
-                                    media.start()
+                                    current.setVolume(volume, volume)
+                                    current.start()
                                     playing = true
                                 }
                             }.onFailure { failed = true; playing = false }
                         }
                     },
-                    enabled = prepared && !failed
-                ) { Text(if (playing) "إيقاف مؤقت" else "تشغيل") }
+                    enabled = !preparing && !failed && (!prepared || player != null)
+                ) { Text(if (preparing) "انتظر..." else if (playing) "إيقاف مؤقت" else if (prepared) "تشغيل" else "تشغيل") }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("مستوى الصوت", color = Muted, fontSize = 11.sp)
@@ -934,10 +968,10 @@ private fun AudioPreviewCard(title: String, filePath: String) {
                     value = volume,
                     onValueChange = { next ->
                         volume = next
-                        player?.let { media -> runCatching { media.setVolume(next, next) } }
+                        player?.let { media -> if (prepared) runCatching { media.setVolume(next, next) } }
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = prepared && !failed
+                    enabled = !failed
                 )
                 Text("${(volume * 100).toInt()}%", color = Gold, fontSize = 11.sp)
             }
