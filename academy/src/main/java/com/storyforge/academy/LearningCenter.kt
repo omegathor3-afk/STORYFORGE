@@ -26,6 +26,19 @@ private data class GuideLesson(
     val tip: String
 )
 
+private data class GuideQuiz(val question: String, val options: List<String>, val correct: Int)
+
+private val guideQuizzes = listOf(
+    GuideQuiz("ما أفضل بداية لمشروع قصصي؟", listOf("كتابة كل النهايات فورًا", "تحديد فكرة العالم ثم إنشاء مشاهد قليلة", "إضافة مؤثرات كثيرة"), 1),
+    GuideQuiz("ما وظيفة المشهد؟", listOf("تمثيل مكان أو لحظة في القصة", "حفظ كلمة المرور", "تغيير لغة الهاتف"), 0),
+    GuideQuiz("كيف تجعل الحوار أوضح؟", listOf("جمع كل الكلام في فقرة", "حذف أسماء المتحدثين", "إضافة سطر مستقل لكل متحدث"), 2),
+    GuideQuiz("ماذا يفعل الاختيار المرتبط بوجهة؟", listOf("ينقل اللاعب إلى مشهد مستهدف", "يحذف المشروع", "يعيد ضبط الهاتف"), 0),
+    GuideQuiz("متى يظهر اختيار عليه شرط trust>=1؟", listOf("دائمًا", "عندما تكون قيمة trust واحدًا أو أكثر", "عندما تكون القيمة صفرًا فقط"), 1),
+    GuideQuiz("ما الذي يضيفه ملف الصوت للمشهد؟", listOf("يغير وجهة الاختيار", "يصنع خلفية صوتية أو مؤثرًا", "ينشئ متغيرًا تلقائيًا"), 1),
+    GuideQuiz("ما أفضل طريقة لاكتشاف مسار مكسور؟", listOf("تجربة الاختيارات والنهايات من المعاينة", "تغيير لون التطبيق", "إغلاق المشروع دون حفظ"), 0),
+    GuideQuiz("هل ملف .storygame هو APK مستقل؟", listOf("نعم، دائمًا", "لا، هو حزمة محتوى تُفتح في Player", "هو ملف صورة"), 1)
+)
+
 private val guideLessons = listOf(
     GuideLesson("ابدأ مشروعك الأول", "دقيقتان", "أنشئ عالم قصتك وحدد فكرته قبل كتابة التفاصيل.",
         listOf("افتح تبويب المكتبة واضغط إنشاء مشروع جديد.", "اكتب عنوانًا واضحًا ووصفًا قصيرًا للعالم.", "افتح المشروع من المكتبة للانتقال إلى الاستوديو."),
@@ -62,6 +75,9 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
         saved.mapNotNull { it.toIntOrNull() }.filter { it in guideLessons.indices }.forEach { add(it) }
     } }
     var selected by remember { mutableIntStateOf(-1) }
+    var quizAnswer by remember(selected) { mutableIntStateOf(-1) }
+    var quizChecked by remember(selected) { mutableStateOf(false) }
+    var showGlossary by remember { mutableStateOf(false) }
     val progress = completed.size.toFloat() / guideLessons.size.toFloat()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("أكاديمية STORYFORGE", color = Color(0xFFD6B477), fontSize = 23.sp, fontWeight = FontWeight.Bold)
@@ -98,11 +114,43 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
                     Text("مهمتك الآن", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold)
                     Text(lesson.task, color = Color.White, lineHeight = 22.sp)
                     Text("نصيحة: ${lesson.tip}", color = Color(0xFF91C8D7), fontSize = 12.sp, lineHeight = 20.sp)
-                    Button(onClick = {
-                        if (!completed.contains(selected)) completed.add(selected)
-                        prefs.edit().putStringSet("completed_lessons", completed.map { it.toString() }.toSet()).apply()
-                        if (selected < guideLessons.lastIndex) selected++ else selected = -1
-                    }, modifier = Modifier.fillMaxWidth()) {
+                    val quiz = guideQuizzes[selected]
+                    Divider(color = Color(0xFF343B43))
+                    Text("اختبر فهمك", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold)
+                    Text(quiz.question, color = Color.White, lineHeight = 22.sp)
+                    quiz.options.forEachIndexed { optionIndex, option ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { quizAnswer = optionIndex; quizChecked = false },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = quizAnswer == optionIndex, onClick = { quizAnswer = optionIndex; quizChecked = false })
+                            Text(option, color = Color(0xFFE1E4EA), lineHeight = 20.sp)
+                        }
+                    }
+                    if (quizChecked) {
+                        Text(
+                            if (quizAnswer == quiz.correct) "إجابة صحيحة! أحسنت." else "ليست الإجابة الصحيحة. راجع الدرس وحاول مرة أخرى.",
+                            color = if (quizAnswer == quiz.correct) Color(0xFF8CBAA5) else Color(0xFFE18B83),
+                            fontSize = 12.sp
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { quizChecked = true },
+                        enabled = quizAnswer >= 0,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("تحقق من الإجابة") }
+                    if (!completed.contains(selected) && !(quizChecked && quizAnswer == quiz.correct)) {
+                        Text("أجب عن سؤال الدرس إجابة صحيحة لفتح زر إكمال الدرس.", color = Color(0xFF9BA4AE), fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = {
+                            if (!completed.contains(selected)) completed.add(selected)
+                            prefs.edit().putStringSet("completed_lessons", completed.map { it.toString() }.toSet()).apply()
+                            if (selected < guideLessons.lastIndex) selected++ else selected = -1
+                        },
+                        enabled = completed.contains(selected) || (quizChecked && quizAnswer == quiz.correct),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(if (completed.contains(selected)) "تم الدرس — التالي" else "أنهيت الدرس، التالي")
                     }
                     if (onOpenStudio != null) OutlinedButton(onClick = onOpenStudio, modifier = Modifier.fillMaxWidth()) { Text("افتح الاستوديو وطبّق الآن") }
@@ -121,6 +169,40 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
                             Text(lesson.summary, color = Color(0xFF9BA4AE), fontSize = 11.sp, lineHeight = 17.sp)
                         }
                         Text(lesson.time, color = Color(0xFF91C8D7), fontSize = 10.sp)
+                    }
+                }
+            }
+            OutlinedButton(onClick = { showGlossary = !showGlossary }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (showGlossary) "إخفاء قاموس المصطلحات" else "افتح قاموس المصطلحات")
+            }
+            if (showGlossary) {
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF171C22)), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                        Text("قاموس STORYFORGE", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Scene — المشهد", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("جزء مستقل من القصة يمثل مكانًا أو لحظة، ويحتوي على وصف وحوار واختيارات.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Choice — الاختيار", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قرار يراه اللاعب، ويمكن أن ينقله إلى مشهد آخر.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Branch — التفرّع", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("مسار مختلف ينتج عن قرار اللاعب، وقد يقوده إلى أحداث أو نهايات مختلفة.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Variable — المتغير", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قيمة تحفظ أثرًا في القصة، مثل الثقة أو عدد المفاتيح.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Condition — الشرط", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قاعدة تحدد متى يظهر اختيار أو يصبح متاحًا، مثل keys>=1.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Asset — الوسائط", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("ملفات الصور والأصوات التي تضيف شكلًا وصوتًا إلى المشاهد.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
                     }
                 }
             }
