@@ -182,7 +182,7 @@ class PlayerActivity : ComponentActivity() {
                     val sceneId = s.optString("id")
                     val image = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("image/") }?.let { File(root,it.path) }
                     val audio = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("audio/") }?.let { File(root,it.path) }
-                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0),s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList())
+                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0),s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),s.optJSONArray("environmentProps")?.let { arr -> (0 until arr.length()).map { k -> val item=arr.getJSONObject(k); SceneProp(item.optString("type","rocks"),item.optDouble("x",0.5).toFloat().coerceIn(0f,1f),item.optDouble("y",0.62).toFloat().coerceIn(0f,1f),item.optDouble("scale",1.0).toFloat().coerceIn(0.4f,2.2f),item.optBoolean("foreground",false)) } } ?: emptyList())
                 }
                 val vars = linkedMapOf<String,Int>()
                 val varsJson = p.optJSONArray("variables")
