@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror, feature/standalone-apk-pipeline, feature/cloud-build-center ]
+    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror, feature/standalone-apk-pipeline, feature/cloud-build-center, feature/cloud-build-backend-foundation ]
   workflow_dispatch:
 
 jobs:
