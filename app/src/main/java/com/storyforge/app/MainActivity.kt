@@ -1,12 +1,16 @@
 package com.storyforge.app
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import java.io.File
+import java.util.Locale
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -21,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,13 +60,22 @@ data class StoryVariable(
     val initialValue: Int = 0
 )
 
+data class StoryAsset(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val relativePath: String,
+    val mimeType: String,
+    val sceneId: String? = null
+)
+
 data class StoryProject(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
     val description: String = "",
     val scenes: List<StoryScene> = listOf(StoryScene()),
     val characters: List<String> = emptyList(),
-    val variables: List<StoryVariable> = emptyList()
+    val variables: List<StoryVariable> = emptyList(),
+    val assets: List<StoryAsset> = emptyList()
 )
 
 class MainActivity : ComponentActivity() {
@@ -126,6 +140,38 @@ class MainActivity : ComponentActivity() {
                     contentResolver.openOutputStream(uri)?.use { it.write(encodeProjects(projects).toByteArray(Charsets.UTF_8)) }
                     Toast.makeText(this@MainActivity, "تم تصدير نسخة STORYFORGE", Toast.LENGTH_SHORT).show()
                 }.onFailure { Toast.makeText(this@MainActivity, "تعذر تصدير النسخة", Toast.LENGTH_SHORT).show() }
+            }
+            val imageAssetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null && selectedId != null) runCatching {
+                    val projectId = selectedId!!
+                    val mime = contentResolver.getType(uri) ?: "image/*"
+                    val ext = when (mime.substringAfter("/", "jpg").lowercase(Locale.ROOT)) {
+                        "jpeg" -> "jpg"; "svg+xml" -> "svg"; "png" -> "png"; "webp" -> "webp"; "gif" -> "gif"; else -> "img"
+                    }
+                    val asset = StoryAsset(name = "صورة ${projects.firstOrNull { it.id == projectId }?.assets?.size?.plus(1) ?: 1}",
+                        relativePath = "storyforge_assets/$projectId/${UUID.randomUUID()}.$ext", mimeType = mime, sceneId = selectedSceneId)
+                    val destination = File(filesDir, asset.relativePath)
+                    destination.parentFile?.mkdirs()
+                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use(input::copyTo) } ?: error("تعذر قراءة الملف")
+                    updateProject(projectId) { it.copy(assets = it.assets + asset) }
+                    Toast.makeText(this@MainActivity, "تمت إضافة الصورة وربطها بالمشهد", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "تعذر استيراد الصورة", Toast.LENGTH_LONG).show() }
+            }
+            val audioAssetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null && selectedId != null) runCatching {
+                    val projectId = selectedId!!
+                    val mime = contentResolver.getType(uri) ?: "audio/*"
+                    val ext = when (mime.substringAfter("/", "mp3").lowercase(Locale.ROOT)) {
+                        "mpeg" -> "mp3"; "mp4" -> "m4a"; "x-wav" -> "wav"; "ogg" -> "ogg"; "aac" -> "aac"; else -> "audio"
+                    }
+                    val asset = StoryAsset(name = "صوت ${projects.firstOrNull { it.id == projectId }?.assets?.size?.plus(1) ?: 1}",
+                        relativePath = "storyforge_assets/$projectId/${UUID.randomUUID()}.$ext", mimeType = mime, sceneId = selectedSceneId)
+                    val destination = File(filesDir, asset.relativePath)
+                    destination.parentFile?.mkdirs()
+                    contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use(input::copyTo) } ?: error("تعذر قراءة الملف")
+                    updateProject(projectId) { it.copy(assets = it.assets + asset) }
+                    Toast.makeText(this@MainActivity, "تمت إضافة الملف الصوتي وربطه بالمشهد", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "تعذر استيراد الملف الصوتي", Toast.LENGTH_LONG).show() }
             }
             val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 if (uri != null) runCatching {
@@ -536,6 +582,32 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     }
+                                    Divider(color = Color(0xFF343B43))
+                                    Text("مكتبة الأصول", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text("استورد صورًا وخلفيات أو ملفات صوتية. تُنسخ الملفات إلى مساحة التطبيق الخاصة وتُحفظ مع بيانات المشروع.", color = Muted, fontSize = 12.sp)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { imageAssetLauncher.launch(arrayOf("image/*")) }, modifier = Modifier.weight(1f)) { Text("＋ صورة / خلفية") }
+                                        OutlinedButton(onClick = { audioAssetLauncher.launch(arrayOf("audio/*")) }, modifier = Modifier.weight(1f)) { Text("＋ صوت / موسيقى") }
+                                    }
+                                    if (current.assets.isEmpty()) Text("لم تتم إضافة أصول لهذا المشروع بعد.", color = Muted, fontSize = 12.sp)
+                                    current.assets.forEach { asset ->
+                                        val linkedScene = current.scenes.firstOrNull { it.id == asset.sceneId }
+                                        Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text(if (asset.mimeType.startsWith("image/")) "▧" else "♫", color = Gold, fontSize = 22.sp)
+                                            Column(Modifier.weight(1f)) {
+                                                Text(asset.name, fontWeight = FontWeight.SemiBold)
+                                                Text("${if (asset.mimeType.startsWith("image/")) "صورة" else "ملف صوتي"} • ${linkedScene?.title ?: "غير مرتبط بمشهد"}", color = Muted, fontSize = 11.sp)
+                                            }
+                                            TextButton(onClick = {
+                                                val destination = current.scenes.firstOrNull { it.id != asset.sceneId }?.id
+                                                updateProject(current.id) { p -> p.copy(assets = p.assets.map { a -> if (a.id == asset.id) a.copy(sceneId = destination) else a }) }
+                                            }) { Text("نقل للمشهد التالي", fontSize = 10.sp) }
+                                            TextButton(onClick = {
+                                                File(filesDir, asset.relativePath).delete()
+                                                updateProject(current.id) { p -> p.copy(assets = p.assets.filterNot { it.id == asset.id }) }
+                                            }) { Text("حذف", color = Color(0xFFE18B83), fontSize = 11.sp) }
+                                        }
+                                    }
                                     Text("يتم الحفظ تلقائيًا على جهازك عند كل تعديل.", color = Color(0xFF8CBAA5), fontSize = 12.sp)
                                 }
                             }
@@ -565,6 +637,12 @@ class MainActivity : ComponentActivity() {
                                                 current.variables.joinToString("  •  ") { "${it.name}: ${previewValues[it.name] ?: it.initialValue}" },
                                                 color = Color(0xFF8CBAA5), fontSize = 12.sp
                                             )
+                                            val sceneImageAsset = current.assets.firstOrNull { it.sceneId == previewScene.id && it.mimeType.startsWith("image/") }
+                                            val sceneBitmap = remember(sceneImageAsset?.relativePath) {
+                                                sceneImageAsset?.let { runCatching { BitmapFactory.decodeFile(File(filesDir, it.relativePath).absolutePath)?.asImageBitmap() }.getOrNull() }
+                                            }
+                                            if (sceneBitmap != null) Image(bitmap = sceneBitmap, contentDescription = "خلفية المشهد",
+                                                modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
                                             previewScene.dialogues.filter { it.speaker.isNotBlank() || it.text.isNotBlank() }.forEach { line ->
@@ -790,7 +868,14 @@ private fun encodeProjects(projects: List<StoryProject>): String {
         project.variables.forEach { variable ->
             variables.put(JSONObject().put("name", variable.name).put("initialValue", variable.initialValue))
         }
-        p.put("scenes", scenes); p.put("characters", characters); p.put("variables", variables); array.put(p)
+        val assets = JSONArray()
+        project.assets.forEach { asset ->
+            assets.put(JSONObject().put("id", asset.id).put("name", asset.name)
+                .put("relativePath", asset.relativePath).put("mimeType", asset.mimeType)
+                .put("sceneId", asset.sceneId ?: JSONObject.NULL))
+        }
+        p.put("scenes", scenes); p.put("characters", characters); p.put("variables", variables)
+        p.put("assets", assets); array.put(p)
     }
     return array.toString(2)
 }
@@ -840,7 +925,15 @@ private fun decodeProjects(json: String): List<StoryProject> {
             variables = (0 until variablesJson.length()).map { k ->
                 val v = variablesJson.getJSONObject(k)
                 StoryVariable(v.optString("name"), v.optInt("initialValue", 0))
-            }
+            },
+            assets = p.optJSONArray("assets")?.let { values ->
+                (0 until values.length()).map { k ->
+                    val a = values.getJSONObject(k)
+                    StoryAsset(id = a.optString("id", UUID.randomUUID().toString()), name = a.optString("name", "Asset"),
+                        relativePath = a.optString("relativePath", ""), mimeType = a.optString("mimeType", "application/octet-stream"),
+                        sceneId = if (a.isNull("sceneId")) null else a.optString("sceneId"))
+                }
+            } ?: emptyList()
         )
     }
 }
