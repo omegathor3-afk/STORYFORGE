@@ -3,15 +3,29 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val generatedApplicationId = providers.gradleProperty("gameApplicationId")
+    .orElse("com.storyforge.player").get()
+val generatedDisplayName = providers.gradleProperty("gameDisplayName")
+    .orElse("STORYFORGE PLAYER").get()
+
+require(generatedApplicationId.matches(Regex("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}"))) {
+    "gameApplicationId must be a valid Android application ID"
+}
+require(generatedDisplayName.isNotBlank() && generatedDisplayName.length <= 40) {
+    "gameDisplayName must contain 1-40 characters"
+}
+
 android {
     namespace = "com.storyforge.player"
     compileSdk = 35
     defaultConfig {
-        applicationId = "com.storyforge.player"
+        applicationId = generatedApplicationId
+        manifestPlaceholders["gameDisplayName"] = generatedDisplayName
         minSdk = 31
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -20,6 +34,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.core:core-ktx:1.15.0")
