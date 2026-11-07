@@ -594,7 +594,7 @@ class MainActivity : ComponentActivity() {
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
                                         FieldLabel("مؤثرات الجو لهذا المشهد")
                                         Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
-                                        val effectOptions = listOf("rain" to "🌧 مطر", "heavy_rain" to "⛈ مطر غزير", "fog" to "🌫 ضباب", "dense_fog" to "ضباب كثيف", "ash" to "رماد متساقط", "dust" to "غبار", "fireflies" to "يراعات", "spores" to "أبواغ فطرية", "embers" to "جمر متطاير", "snow" to "ثلج", "black_shadows" to "ظلال عابرة", "blood_mist" to "ضباب دموي", "wind" to "رياح", "dead_leaves" to "أوراق ميتة", "branches" to "ظلال أغصان مكسورة", "dead_forest" to "غابة ميتة متعددة الطبقات", "lightning" to "برق بعيد", "crows" to "غربان عابرة", "watching_eyes" to "عيون تراقب من الظلام", "moths" to "عثّ ليلي", "insects" to "حشرات طائرة")
+                                        val effectOptions = listOf("rain" to "🌧 مطر", "heavy_rain" to "⛈ مطر غزير", "fog" to "🌫 ضباب", "dense_fog" to "ضباب كثيف", "ash" to "رماد متساقط", "dust" to "غبار", "fireflies" to "يراعات", "spores" to "أبواغ فطرية", "embers" to "جمر متطاير", "snow" to "ثلج", "black_shadows" to "ظلال عابرة", "blood_mist" to "ضباب دموي", "wind" to "رياح", "dead_leaves" to "أوراق ميتة", "branches" to "ظلال أغصان مكسورة", "dead_forest" to "غابة ميتة متعددة الطبقات", "lightning" to "برق بعيد", "crows" to "غربان عابرة", "watching_eyes" to "عيون تراقب من الظلام", "moths" to "عثّ ليلي", "insects" to "حشرات طائرة", "ground_fog" to "ضباب يزحف على الأرض", "distant_glow" to "وهج بعيد بين الأشجار")
                                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             effectOptions.chunked(2).forEach { rowOptions ->
                                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -939,8 +939,13 @@ class MainActivity : ComponentActivity() {
                                             val sceneBitmap = remember(sceneImageAsset?.relativePath) {
                                                 sceneImageAsset?.let { runCatching { BitmapFactory.decodeFile(File(filesDir, it.relativePath).absolutePath)?.asImageBitmap() }.getOrNull() }
                                             }
-                                            if (sceneBitmap != null) Image(bitmap = sceneBitmap, contentDescription = "خلفية المشهد",
-                                                modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                                            Box(Modifier.fillMaxWidth().height(220.dp).background(Color(0xFF101712))) {
+                                                if (sceneBitmap != null) Image(bitmap = sceneBitmap, contentDescription = "خلفية المشهد",
+                                                    modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                                                SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = false, modifier = Modifier.fillMaxSize())
+                                                AtmosphereOverlay(effects = previewScene.atmosphereEffects, theme = current.visualTheme, intensity = previewScene.atmosphereIntensity, modifier = Modifier.fillMaxSize())
+                                                SceneEnvironmentOverlay(props = previewScene.environmentProps, foreground = true, modifier = Modifier.fillMaxSize())
+                                            }
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
                                             previewScene.dialogues.filter { it.speaker.isNotBlank() || it.text.isNotBlank() }.forEach { line ->

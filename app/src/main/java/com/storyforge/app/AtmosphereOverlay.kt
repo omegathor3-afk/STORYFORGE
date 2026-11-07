@@ -53,6 +53,22 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 drawCircle(tint, radius = w * (if ("dense_fog" in active) 0.34f else 0.23f), center = Offset(x, y))
             }
         }
+        if ("ground_fog" in active) {
+            for (i in 0..5) {
+                val x = ((i * w * 0.24f + phase * w * 0.55f) % (w + 100f)) - 50f
+                val y = h * (0.76f + (i % 2) * 0.08f)
+                drawCircle(Color(0x447D8980), radius = w * 0.19f, center = Offset(x, y))
+            }
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0x337C887E), Color(0x117C887E)), startY = h * 0.58f, endY = h))
+        }
+        if ("distant_glow" in active) {
+            for (i in 0..2) {
+                val x = w * (0.22f + i * 0.29f)
+                val y = h * (0.43f + (i % 2) * 0.08f)
+                drawCircle(Color(0x227E9A69), radius = w * 0.1f, center = Offset(x, y))
+                drawCircle(Color(0x668CA66C), radius = 2.2f, center = Offset(x, y))
+            }
+        }
         if ("rain" in active || "heavy_rain" in active || "wind" in active) {
             val count = if ("heavy_rain" in active) 150 else 75
             for (i in 0 until count) {

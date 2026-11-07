@@ -15,11 +15,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.PI
 import kotlin.math.sin
 
 @Composable
-internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: Modifier = Modifier) {
+internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: Float = 0.72f, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "darkwood-atmosphere")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "drift")
     val active = effects.toSet() + when (theme) {
@@ -30,7 +31,7 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: M
         "frozen" -> setOf("snow", "fog", "wind")
         else -> setOf("fog", "branches", "dead_leaves")
     }
-    Canvas(modifier.fillMaxSize()) {
+    Canvas(modifier.fillMaxSize().graphicsLayer(alpha = intensity.coerceIn(0f, 1f))) {
         val w = size.width; val h = size.height
         drawRect(Brush.verticalGradient(listOf(Color(0x22020708), Color.Transparent, Color(0x66030708))))
         if ("branches" in active || "dead_leaves" in active) {
@@ -48,6 +49,22 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, modifier: M
                 val x = ((phase + i * 0.23f) % 1.35f - 0.15f) * w
                 val y = h * (0.35f + (i % 3) * 0.17f)
                 drawCircle(tint, radius = w * (if ("dense_fog" in active) 0.34f else 0.23f), center = Offset(x, y))
+            }
+        }
+        if ("ground_fog" in active) {
+            for (i in 0..5) {
+                val x = ((i * w * 0.24f + phase * w * 0.55f) % (w + 100f)) - 50f
+                val y = h * (0.76f + (i % 2) * 0.08f)
+                drawCircle(Color(0x447D8980), radius = w * 0.19f, center = Offset(x, y))
+            }
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0x337C887E), Color(0x117C887E)), startY = h * 0.58f, endY = h))
+        }
+        if ("distant_glow" in active) {
+            for (i in 0..2) {
+                val x = w * (0.22f + i * 0.29f)
+                val y = h * (0.43f + (i % 2) * 0.08f)
+                drawCircle(Color(0x227E9A69), radius = w * 0.1f, center = Offset(x, y))
+                drawCircle(Color(0x668CA66C), radius = 2.2f, center = Offset(x, y))
             }
         }
         if ("rain" in active || "heavy_rain" in active || "wind" in active) {

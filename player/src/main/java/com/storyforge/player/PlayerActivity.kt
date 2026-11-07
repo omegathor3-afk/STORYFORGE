@@ -41,7 +41,7 @@ private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
 internal data class SceneProp(val type:String,val x:Float,val y:Float,val scale:Float,val foreground:Boolean)
-private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int,val atmosphereEffects:List<String>,val environmentProps:List<SceneProp>)
+private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int,val atmosphereEffects:List<String>,val atmosphereIntensity:Float,val environmentProps:List<SceneProp>)
 private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?,val visualTheme:String,val showSceneNumbers:Boolean)
 
 class PlayerActivity : ComponentActivity() {
@@ -96,7 +96,7 @@ class PlayerActivity : ComponentActivity() {
             val id = s.optString("id")
             val image = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("image/") }?.let { File(root, it.path) }
             val audio = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("audio/") }?.let { File(root, it.path) }
-            Scene(id, s.optString("title"), s.optString("text"), choices, lines, image, audio, s.optInt("choiceTimerSeconds", 0).coerceIn(0,300), s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0), s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(), s.optJSONArray("environmentProps")?.let { arr -> (0 until arr.length()).map { k -> val item=arr.getJSONObject(k); SceneProp(item.optString("type","rocks"),item.optDouble("x",0.5).toFloat().coerceIn(0f,1f),item.optDouble("y",0.62).toFloat().coerceIn(0f,1f),item.optDouble("scale",1.0).toFloat().coerceIn(0.4f,2.2f),item.optBoolean("foreground",false)) } } ?: emptyList())
+            Scene(id, s.optString("title"), s.optString("text"), choices, lines, image, audio, s.optInt("choiceTimerSeconds", 0).coerceIn(0,300), s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0), s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(), s.optDouble("atmosphereIntensity",0.72).toFloat().coerceIn(0f,1f), s.optJSONArray("environmentProps")?.let { arr -> (0 until arr.length()).map { k -> val item=arr.getJSONObject(k); SceneProp(item.optString("type","rocks"),item.optDouble("x",0.5).toFloat().coerceIn(0f,1f),item.optDouble("y",0.62).toFloat().coerceIn(0f,1f),item.optDouble("scale",1.0).toFloat().coerceIn(0.4f,2.2f),item.optBoolean("foreground",false)) } } ?: emptyList())
         }
         val variables = linkedMapOf<String, Int>(); val vars = project.optJSONArray("variables")
         for (i in 0 until (vars?.length() ?: 0)) { val v = vars!!.getJSONObject(i); variables[v.optString("name")] = v.optInt("initialValue") }
@@ -182,7 +182,7 @@ class PlayerActivity : ComponentActivity() {
                     val sceneId = s.optString("id")
                     val image = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("image/") }?.let { File(root,it.path) }
                     val audio = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("audio/") }?.let { File(root,it.path) }
-                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0),s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),s.optJSONArray("environmentProps")?.let { arr -> (0 until arr.length()).map { k -> val item=arr.getJSONObject(k); SceneProp(item.optString("type","rocks"),item.optDouble("x",0.5).toFloat().coerceIn(0f,1f),item.optDouble("y",0.62).toFloat().coerceIn(0f,1f),item.optDouble("scale",1.0).toFloat().coerceIn(0.4f,2.2f),item.optBoolean("foreground",false)) } } ?: emptyList())
+                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0),s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList(),s.optDouble("atmosphereIntensity",0.72).toFloat().coerceIn(0f,1f),s.optJSONArray("environmentProps")?.let { arr -> (0 until arr.length()).map { k -> val item=arr.getJSONObject(k); SceneProp(item.optString("type","rocks"),item.optDouble("x",0.5).toFloat().coerceIn(0f,1f),item.optDouble("y",0.62).toFloat().coerceIn(0f,1f),item.optDouble("scale",1.0).toFloat().coerceIn(0.4f,2.2f),item.optBoolean("foreground",false)) } } ?: emptyList())
                 }
                 val vars = linkedMapOf<String,Int>()
                 val varsJson = p.optJSONArray("variables")
@@ -315,7 +315,7 @@ class PlayerActivity : ComponentActivity() {
                                 bitmap?.let { Image(it,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop) }
                             } ?: Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF17211B), Night))))
                             SceneEnvironmentOverlay(props=scene.environmentProps,foreground=false,modifier=Modifier.fillMaxSize())
-                            AtmosphereOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,modifier=Modifier.fillMaxSize())
+                            AtmosphereOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,intensity=scene.atmosphereIntensity,modifier=Modifier.fillMaxSize())
                             SceneEnvironmentOverlay(props=scene.environmentProps,foreground=true,modifier=Modifier.fillMaxSize())
                         }
                     }
