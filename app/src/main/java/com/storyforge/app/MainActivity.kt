@@ -924,23 +924,35 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     },
-                                    onStartBuild = { storyUrl, title, appId, version, versionCode, buildType ->
+                                    onStartBuild = { title, appId, version, versionCode, buildType ->
                                         val token = cloudAccessToken
+                                        val projectToBuild = current
                                         if (token == null) {
                                             cloudMessage = "سجّل الدخول أولًا."
+                                        } else if (projectToBuild == null) {
+                                            cloudMessage = "اختر قصة من المكتبة أولًا."
                                         } else {
                                             cloudBusy = true
-                                            cloudMessage = "جارٍ إرسال طلب البناء..."
+                                            cloudMessage = "جارٍ تجهيز حزمة القصة ورفعها إلى التخزين الخاص..."
                                             lifecycleScope.launch {
                                                 runCatching {
                                                     withContext(Dispatchers.IO) {
-                                                        CloudBuildApi.start(cloudApiBaseUrl, token, storyUrl, title, appId, version, versionCode, buildType)
+                                                        val packageFile = File(cacheDir, "storyforge-${UUID.randomUUID()}.storygame")
+                                                        try {
+                                                            packageFile.outputStream().use { output ->
+                                                                writeStandaloneStoryPackage(output, projectToBuild, filesDir)
+                                                            }
+                                                            val storyUrl = CloudBuildApi.uploadStoryPackage(cloudApiBaseUrl, token, packageFile)
+                                                            CloudBuildApi.start(cloudApiBaseUrl, token, storyUrl, title, appId, version, versionCode, buildType)
+                                                        } finally {
+                                                            packageFile.delete()
+                                                        }
                                                     }
                                                 }.onSuccess { job ->
                                                     cloudJobId = job.jobId
                                                     cloudJobStatus = job.status
                                                     cloudArtifactAvailable = false
-                                                    cloudMessage = "تم إرسال الطلب بنجاح."
+                                                    cloudMessage = "تم رفع القصة وإرسال طلب البناء بنجاح."
                                                 }.onFailure { error ->
                                                     cloudMessage = error.message ?: "تعذر بدء البناء."
                                                 }

@@ -49,7 +49,7 @@ internal fun BuildCenter(
     message: String,
     onSaveSettings: (String, String, String, String) -> Unit,
     onSignIn: (String, String, String) -> Unit,
-    onStartBuild: (String, String, String, String, String, String) -> Unit,
+    onStartBuild: (String, String, String, String, String) -> Unit,
     onRefresh: () -> Unit,
     onDownload: () -> Unit,
     onExport: () -> Unit,
@@ -60,7 +60,6 @@ internal fun BuildCenter(
     var issuer by remember(oidcIssuer) { mutableStateOf(oidcIssuer) }
     var clientId by remember(oidcClientId) { mutableStateOf(oidcClientId) }
     var audience by remember(oidcAudience) { mutableStateOf(oidcAudience) }
-    var storyUrl by remember { mutableStateOf("") }
     var gameTitle by remember(project?.id) { mutableStateOf(project?.title ?: "") }
     var applicationId by remember(project?.id) { mutableStateOf("") }
     var versionName by remember { mutableStateOf("1.0.0") }
@@ -120,12 +119,11 @@ internal fun BuildCenter(
             Button(onClick = onExport, modifier = Modifier.fillMaxWidth(), enabled = diagnostics.none { it.isError }) {
                 Text("① تصدير حزمة القصة .storygame")
             }
-            Text("بعد التصدير، ارفع الملف إلى رابط HTTPS مباشر متاح للخدمة، ثم الصق الرابط هنا. الرفع المباشر من الهاتف إلى التخزين السحابي هو خطوة تالية.", color = BuildMuted, fontSize = 11.sp)
+            Text("يمكنك تصدير نسخة احتياطية يدويًا. عند بدء البناء السحابي، سيُنشئ التطبيق ملف .storygame تلقائيًا ويرفعه إلى التخزين الخاص دون الحاجة إلى رابط خارجي.", color = BuildMuted, fontSize = 11.sp)
 
             Card(colors = CardDefaults.cardColors(containerColor = BuildPanel), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text("② إنشاء APK سحابي", color = BuildGold, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(value = storyUrl, onValueChange = { storyUrl = it }, label = { Text("رابط ملف .storygame (HTTPS)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(value = gameTitle, onValueChange = { gameTitle = it.take(40) }, label = { Text("اسم اللعبة") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(value = applicationId, onValueChange = { applicationId = it }, label = { Text("Application ID (اختياري)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -137,8 +135,8 @@ internal fun BuildCenter(
                         TextButton(onClick = { buildType = "release" }) { Text(if (buildType == "release") "✓ Release" else "Release") }
                     }
                     Button(
-                        onClick = { onStartBuild(storyUrl.trim(), gameTitle.trim(), applicationId.trim(), versionName.trim(), versionCode.trim(), buildType) },
-                        enabled = !busy && isAuthenticated && diagnostics.none { it.isError } && storyUrl.startsWith("https://") && gameTitle.isNotBlank(),
+                        onClick = { onStartBuild(gameTitle.trim(), applicationId.trim(), versionName.trim(), versionCode.trim(), buildType) },
+                        enabled = !busy && isAuthenticated && diagnostics.none { it.isError } && gameTitle.isNotBlank(),
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(if (busy) "جارٍ إرسال الطلب..." else "③ ابدأ بناء APK") }
                     if (message.isNotBlank()) Text(message, color = BuildMuted, fontSize = 12.sp)

@@ -14,12 +14,14 @@ Required server-side environment variables:
 - OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URL: trusted identity provider JWT settings.
 - GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_INSTALLATION_ID: GitHub App credentials. Grant Actions read/write and Contents read on STORYFORGE only.
 - STORYGAME_ALLOWED_HOSTS: comma-separated host allowlist for story and icon downloads. Empty means deny all.
+- R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME: private Cloudflare R2 bucket used for story uploads. Create an R2 API token scoped to this bucket only.
 - STORYFORGE_BUILD_REF: branch containing standalone-apk.yml.
 - Optional GITHUB_REPOSITORY_OWNER and GITHUB_REPOSITORY_NAME.
 
 Run db/schema.sql once against PostgreSQL. Then install dependencies and run npm run typecheck.
 
 ## API
+- POST /api/uploads: authenticated; returns short-lived signed PUT and GET URLs for a `.storygame` file in private R2 storage.
 - POST /api/build-jobs: authenticated; requires Idempotency-Key and JSON storygameUrl, gameTitle, plus optional app identity/version/icon/build type.
 - GET /api/build-jobs/:id: authenticated job status and artifact readiness.
 - GET /api/build-jobs/:id/artifact: authenticated short-lived redirect to the artifact archive.
@@ -41,10 +43,6 @@ Register this exact native redirect URI with the identity provider:
 
 Enable Authorization Code + PKCE (S256) and the `openid profile email` scopes. If the provider supports a custom `audience` authorization parameter, the app sends the configured API Audience value.
 
-The app can create a job and refresh its status. The artifact endpoint returns a short-lived HTTPS download redirect; the app obtains that URL with the bearer token, then hands only the signed URL (never the bearer token) to Android Download Manager.
+The app packages the selected story, uploads it directly to a private R2 bucket with a short-lived presigned PUT URL, starts the GitHub build, and refreshes job status. The artifact endpoint returns a short-lived HTTPS download redirect; the app obtains that URL with the bearer token, then hands only the signed URL (never the bearer token) to Android Download Manager.
 
-### Current upload limitation
-
-The Android app currently exports the `.storygame` package locally. To submit a cloud build, place that file at a direct HTTPS URL on a host listed in `STORYGAME_ALLOWED_HOSTS`, then paste the URL into the Build Center. Direct upload from the Android app to managed object storage is a separate follow-up; do not expose storage credentials in the APK.
-
-No credentials are committed in this directory. The service is still not deployed: configure the OIDC provider, PostgreSQL, GitHub App and Vercel environment before testing a real build.
+The Android Studio now exports the `.storygame` archive into its private cache, uploads it directly to the configured private R2 bucket, and starts the build. No public story URL or external file-hosting step is required. The R2 bucket should remain private; the signed download URL expires after one hour and the upload URL after ten minutes. Configure lifecycle deletion for the `storygames/` prefix to remove old uploads.

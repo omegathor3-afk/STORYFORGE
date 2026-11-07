@@ -2,9 +2,15 @@
   "name": "storyforge-cloud-build-service",
   "private": true,
   "version": "0.1.0",
-  "engines": { "node": ">=20" },
-  "scripts": { "typecheck": "tsc --noEmit" },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/s3-request-presigner": "^3.750.0",
     "@octokit/auth-app": "7.2.1",
     "@vercel/node": "5.3.21",
     "jose": "6.1.0",

@@ -3,6 +3,7 @@ package com.storyforge.app
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.File
 import java.util.UUID
 
 internal data class CloudBuildResult(
@@ -77,6 +78,35 @@ internal object CloudBuildApi {
             downloadUrl = json.optString("downloadUrl").takeIf { it.isNotBlank() && it != "null" }
         )
     }
+    fun uploadStoryPackage(baseUrl: String, token: String, file: File): String {
+        require(file.isFile && file.length() in 1..(100L * 1024L * 1024L)) { "ملف القصة غير موجود أو يتجاوز 100 ميجابايت." }
+        val init = request(
+            baseUrl, token, "/api/uploads", "POST",
+            JSONObject().put("fileName", file.name).put("fileSize", file.length())
+        )
+        val uploadUrl = init.getString("uploadUrl")
+        val signed = URL(uploadUrl)
+        require(signed.protocol == "https:") { "رابط رفع الملف غير آمن." }
+        val connection = (signed.openConnection() as HttpURLConnection).apply {
+            requestMethod = "PUT"
+            doOutput = true
+            connectTimeout = 20000
+            readTimeout = 120000
+            setFixedLengthStreamingMode(file.length())
+            setRequestProperty("Content-Type", "application/octet-stream")
+        }
+        try {
+            file.inputStream().buffered().use { input ->
+                connection.outputStream.buffered().use { output -> input.copyTo(output) }
+            }
+            val code = connection.responseCode
+            if (code !in 200..299) throw IllegalStateException("فشل رفع ملف القصة إلى التخزين السحابي ($code).")
+        } finally {
+            connection.disconnect()
+        }
+        return init.getString("storygameUrl")
+    }
+
     fun artifactDownloadUrl(baseUrl: String, token: String, jobId: String): String {
         val base = baseUrl.trim().trimEnd('/')
         require(base.startsWith("https://")) { "رابط الخدمة يجب أن يبدأ بـ HTTPS." }
