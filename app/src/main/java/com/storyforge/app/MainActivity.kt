@@ -2,6 +2,7 @@ package com.storyforge.app
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.media.MediaPlayer
 import android.os.Bundle
 import java.io.File
 import java.util.Locale
@@ -652,6 +653,12 @@ class MainActivity : ComponentActivity() {
                                                     if (line.text.isNotBlank()) Text(line.text, lineHeight = 23.sp)
                                                 }
                                             }
+                                            current.assets.filter { it.sceneId == previewScene.id && it.mimeType.startsWith("audio/") }.forEach { audioAsset ->
+                                                AudioPreviewCard(
+                                                    title = audioAsset.name,
+                                                    filePath = File(filesDir, audioAsset.relativePath).absolutePath
+                                                )
+                                            }
                                             previewScene.choices.forEachIndexed { choiceIndex, choice ->
                                                 val condition = previewScene.choiceConditions.getOrNull(choiceIndex).orEmpty()
                                                 val allowed = evaluateStoryCondition(condition, previewValues)
@@ -817,6 +824,91 @@ class MainActivity : ComponentActivity() {
                     },
                     dismissButton = { TextButton(onClick = { showBackup = false }) { Text("إغلاق") } }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioPreviewCard(title: String, filePath: String) {
+    var player by remember(filePath) { mutableStateOf<MediaPlayer?>(null) }
+    var prepared by remember(filePath) { mutableStateOf(false) }
+    var playing by remember(filePath) { mutableStateOf(false) }
+    var failed by remember(filePath) { mutableStateOf(false) }
+    var volume by remember(filePath) { mutableFloatStateOf(0.75f) }
+
+    DisposableEffect(filePath) {
+        var activePlayer: MediaPlayer? = null
+        runCatching {
+            MediaPlayer().also { media ->
+                activePlayer = media
+                media.setOnPreparedListener {
+                    prepared = true
+                    it.setVolume(volume, volume)
+                }
+                media.setOnCompletionListener { playing = false }
+                media.setOnErrorListener { _, _, _ ->
+                    failed = true
+                    playing = false
+                    true
+                }
+                media.setDataSource(filePath)
+                media.prepareAsync()
+                player = media
+            }
+        }.onFailure { failed = true }
+        onDispose {
+            runCatching { activePlayer?.stop() }
+            runCatching { activePlayer?.release() }
+            player = null
+            prepared = false
+            playing = false
+        }
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Ink), shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text("♫  $title", color = Gold, fontWeight = FontWeight.SemiBold)
+                    Text(when {
+                        failed -> "تعذر تشغيل الملف الصوتي"
+                        !prepared -> "جارٍ تجهيز الصوت..."
+                        playing -> "يعمل الآن"
+                        else -> "جاهز للتشغيل"
+                    }, color = Muted, fontSize = 11.sp)
+                }
+                Button(
+                    onClick = {
+                        val media = player
+                        if (media != null && prepared && !failed) {
+                            runCatching {
+                                if (playing) {
+                                    media.pause()
+                                    playing = false
+                                } else {
+                                    media.start()
+                                    playing = true
+                                }
+                            }.onFailure { failed = true; playing = false }
+                        }
+                    },
+                    enabled = prepared && !failed
+                ) { Text(if (playing) "إيقاف مؤقت" else "تشغيل") }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("مستوى الصوت", color = Muted, fontSize = 11.sp)
+                Slider(
+                    value = volume,
+                    onValueChange = { next ->
+                        volume = next
+                        player?.let { media -> runCatching { media.setVolume(next, next) } }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = prepared && !failed
+                )
+                Text("${(volume * 100).toInt()}%", color = Gold, fontSize = 11.sp)
             }
         }
     }
