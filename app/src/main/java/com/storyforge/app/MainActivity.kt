@@ -247,11 +247,11 @@ class MainActivity : ComponentActivity() {
                     containerColor = Ink,
                     bottomBar = {
                         NavigationBar(containerColor = Panel, contentColor = Gold) {
-                            listOf("المكتبة", "الاستوديو", "المعاينة", "التعلّم").forEachIndexed { i, label ->
+                            listOf("المكتبة", "الاستوديو", "المعاينة", "التعلّم", "بناء APK").forEachIndexed { i, label ->
                                 NavigationBarItem(
                                     selected = page == i,
                                     onClick = { page = i },
-                                    icon = { Text(listOf("▤", "✎", "▷", "؟")[i], fontSize = 20.sp) },
+                                    icon = { Text(listOf("▤", "✎", "▷", "؟", "⬇")[i], fontSize = 20.sp) },
                                     label = { Text(label) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Gold, selectedTextColor = Gold,
@@ -827,8 +827,26 @@ class MainActivity : ComponentActivity() {
                                     Text("كل اختيار يمكن توجيهه إلى مشهد مستقل أو إنهاء القصة. الوجهة التلقائية تتابع للمشهد التالي.", color = Muted, fontSize = 12.sp)
                                 }
                             }
-                            else -> {
+                            3 -> {
                                 LearningCenter(onOpenStudio = { page = 1 })
+                            }
+                            4 -> {
+                                BuildCenter(
+                                    project = current,
+                                    diagnostics = current?.let { diagnoseStory(it) }.orEmpty(),
+                                    onExport = {
+                                        current?.let { project ->
+                                            gamePackageLauncher.launch(project.title.replace(Regex("[^A-Za-z0-9._-]+"), "_") + ".storygame")
+                                        }
+                                    },
+                                    onOpenWorkflow = {
+                                        startActivity(android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse("https://github.com/omegathor3-afk/STORYFORGE/actions/workflows/standalone-apk.yml")
+                                        ))
+                                    },
+                                    onOpenLibrary = { page = 0 }
+                                )
                             }
                         }
                     }
