@@ -40,10 +40,10 @@ jobs:
 
       - name: Verify standalone APK configuration
         run: |
-          gradle --no-daemon :player:assembleDebug \\
-            -PgameApplicationId=com.storyforge.games.ci \\
-            -PgameDisplayName="CI Story Game" \\
-            -PgameVersionName=1.2.3 \\
+          gradle --no-daemon :player:assembleDebug \
+            -PgameApplicationId=com.storyforge.games.ci \
+            -PgameDisplayName="CI Story Game" \
+            -PgameVersionName=1.2.3 \
             -PgameVersionCode=2
 
       - name: Upload APK
