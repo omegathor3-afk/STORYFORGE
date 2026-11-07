@@ -77,6 +77,7 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
     var selected by remember { mutableIntStateOf(-1) }
     var quizAnswer by remember(selected) { mutableIntStateOf(-1) }
     var quizChecked by remember(selected) { mutableStateOf(false) }
+    var showGlossary by remember { mutableStateOf(false) }
     val progress = completed.size.toFloat() / guideLessons.size.toFloat()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("أكاديمية STORYFORGE", color = Color(0xFFD6B477), fontSize = 23.sp, fontWeight = FontWeight.Bold)
@@ -161,6 +162,40 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
                             Text(lesson.summary, color = Color(0xFF9BA4AE), fontSize = 11.sp, lineHeight = 17.sp)
                         }
                         Text(lesson.time, color = Color(0xFF91C8D7), fontSize = 10.sp)
+                    }
+                }
+            }
+            OutlinedButton(onClick = { showGlossary = !showGlossary }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (showGlossary) "إخفاء قاموس المصطلحات" else "افتح قاموس المصطلحات")
+            }
+            if (showGlossary) {
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF171C22)), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                        Text("قاموس STORYFORGE", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Scene — المشهد", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("جزء مستقل من القصة يمثل مكانًا أو لحظة، ويحتوي على وصف وحوار واختيارات.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Choice — الاختيار", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قرار يراه اللاعب، ويمكن أن ينقله إلى مشهد آخر.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Branch — التفرّع", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("مسار مختلف ينتج عن قرار اللاعب، وقد يقوده إلى أحداث أو نهايات مختلفة.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Variable — المتغير", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قيمة تحفظ أثرًا في القصة، مثل الثقة أو عدد المفاتيح.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Condition — الشرط", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("قاعدة تحدد متى يظهر اختيار أو يصبح متاحًا، مثل keys>=1.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Asset — الوسائط", color = Color(0xFF91C8D7), fontWeight = FontWeight.SemiBold)
+                            Text("ملفات الصور والأصوات التي تضيف شكلًا وصوتًا إلى المشاهد.", color = Color(0xFFE1E4EA), fontSize = 12.sp, lineHeight = 19.sp)
+                        }
                     }
                 }
             }
