@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "StoryForge"
-include(":app")
+include(":app", ":player")
