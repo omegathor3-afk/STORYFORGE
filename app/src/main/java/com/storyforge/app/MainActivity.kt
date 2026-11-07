@@ -656,6 +656,52 @@ class MainActivity : ComponentActivity() {
                                             "bones" to "☠ عظام", "hanging_roots" to "〰 جذور معلّقة",
                                             "shrine" to "♜ ضريح مهجور", "crates" to "▦ صناديق قديمة", "grave" to "† شاهد قبر", "thorn_bush" to "♧ شجيرة شوكية", "broken_cart" to "عربة محطمة", "well" to "بئر مهجور", "hanging_cage" to "قفص معلّق", "ruined_door" to "باب متهالك"
                                         )
+                                        Text("تخطيطات بيئية جاهزة — تستبدل العناصر الحالية للمشهد", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        val propLayouts = listOf(
+                                            "غابة ميتة" to listOf(
+                                                SceneProp(type = "dead_tree", x = 0.12f, y = 0.55f, scale = 1.7f),
+                                                SceneProp(type = "dead_tree", x = 0.84f, y = 0.58f, scale = 1.9f, foreground = true),
+                                                SceneProp(type = "stump", x = 0.48f, y = 0.78f, scale = 0.9f),
+                                                SceneProp(type = "thorn_bush", x = 0.68f, y = 0.86f, scale = 1.2f, foreground = true),
+                                                SceneProp(type = "rocks", x = 0.22f, y = 0.88f, scale = 0.8f)
+                                            ),
+                                            "مقبرة منسية" to listOf(
+                                                SceneProp(type = "grave", x = 0.3f, y = 0.78f, scale = 1.1f),
+                                                SceneProp(type = "grave", x = 0.68f, y = 0.73f, scale = 1.3f),
+                                                SceneProp(type = "dead_tree", x = 0.88f, y = 0.56f, scale = 1.8f, foreground = true),
+                                                SceneProp(type = "bones", x = 0.48f, y = 0.9f, scale = 0.7f),
+                                                SceneProp(type = "thorn_bush", x = 0.12f, y = 0.86f, scale = 1.1f, foreground = true)
+                                            ),
+                                            "مستنقع فطري" to listOf(
+                                                SceneProp(type = "fungus", x = 0.22f, y = 0.8f, scale = 1.2f),
+                                                SceneProp(type = "fungus", x = 0.74f, y = 0.78f, scale = 1.5f, foreground = true),
+                                                SceneProp(type = "hanging_roots", x = 0.52f, y = 0.35f, scale = 1.5f),
+                                                SceneProp(type = "well", x = 0.48f, y = 0.84f, scale = 1.0f),
+                                                SceneProp(type = "rocks", x = 0.9f, y = 0.9f, scale = 0.8f)
+                                            ),
+                                            "خرابة مهجورة" to listOf(
+                                                SceneProp(type = "ruined_door", x = 0.5f, y = 0.66f, scale = 1.5f),
+                                                SceneProp(type = "broken_fence", x = 0.16f, y = 0.78f, scale = 1.3f),
+                                                SceneProp(type = "broken_cart", x = 0.78f, y = 0.86f, scale = 1.0f, foreground = true),
+                                                SceneProp(type = "crates", x = 0.28f, y = 0.86f, scale = 0.9f),
+                                                SceneProp(type = "lantern", x = 0.86f, y = 0.5f, scale = 0.8f)
+                                            )
+                                        )
+                                        propLayouts.chunked(2).forEach { layoutRow ->
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                layoutRow.forEach { (layoutName, layoutProps) ->
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            updateProject(current.id) { project -> project.copy(scenes = project.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(environmentProps = layoutProps) else item
+                                                            }) }
+                                                        },
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                                                    ) { Text(layoutName, fontSize = 11.sp) }
+                                                }
+                                            }
+                                        }
                                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             propOptions.chunked(2).forEach { optionRow ->
                                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
