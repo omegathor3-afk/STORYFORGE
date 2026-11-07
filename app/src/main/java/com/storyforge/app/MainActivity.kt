@@ -988,7 +988,7 @@ private const val ZIP_MAX_TOTAL_BYTES = 100L * 1024L * 1024L
 private const val ZIP_MAX_JSON_BYTES = 10L * 1024L * 1024L
 
 private fun isSafeStoryAssetPath(path: String): Boolean {
-    if (!path.startsWith("storyforge_assets/") || path.startsWith("/") || path.contains('\\\\')) return false
+    if (!path.startsWith("storyforge_assets/") || path.startsWith("/") || path.contains(92.toChar())) return false
     val parts = path.split('/')
     return parts.size >= 3 && parts.none { it.isBlank() || it == "." || it == ".." }
 }
@@ -1029,7 +1029,7 @@ internal fun restoreStoryZipBackup(input: InputStream, filesDir: File): List<Sto
                     continue
                 }
                 val name = entry.name
-                require(!name.startsWith("/") && !name.contains('\\\\') &&
+                require(!name.startsWith("/") && !name.contains(92.toChar()) &&
                     name.split('/').none { it == "." || it == ".." || it.isBlank() }) { "مسار ملف غير آمن داخل ZIP" }
                 require(seenEntries.add(name)) { "النسخة تحتوي على ملف مكرر" }
                 when {
