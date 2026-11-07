@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("storyforge_local", Context.MODE_PRIVATE)
         setContent {
             var projects by remember { mutableStateOf(loadProjects(prefs)) }
+            val undoStack = remember { mutableStateListOf<List<StoryProject>>() }
+            val redoStack = remember { mutableStateListOf<List<StoryProject>>() }
             var selectedId by remember { mutableStateOf<String?>(null) }
             var selectedSceneId by remember { mutableStateOf<String?>(null) }
             var page by remember { mutableIntStateOf(0) }
@@ -78,9 +80,33 @@ class MainActivity : ComponentActivity() {
             var previewSceneId by remember { mutableStateOf<String?>(null) }
             var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
-            fun persist(next: List<StoryProject>) {
+            fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {
+                if (recordHistory && projects != next) {
+                    undoStack.add(projects.toList())
+                    if (undoStack.size > 40) undoStack.removeAt(0)
+                    redoStack.clear()
+                }
                 projects = next
                 prefs.edit().putString("projects_json", encodeProjects(next)).apply()
+            }
+            fun undoEdit() {
+                if (undoStack.isNotEmpty()) {
+                    redoStack.add(projects.toList())
+                    val previous = undoStack.removeAt(undoStack.lastIndex)
+                    projects = previous
+                    prefs.edit().putString("projects_json", encodeProjects(previous)).apply()
+                    if (selectedId != null && previous.none { it.id == selectedId }) {
+                        selectedId = null; selectedSceneId = null; page = 0
+                    }
+                }
+            }
+            fun redoEdit() {
+                if (redoStack.isNotEmpty()) {
+                    undoStack.add(projects.toList())
+                    val next = redoStack.removeAt(redoStack.lastIndex)
+                    projects = next
+                    prefs.edit().putString("projects_json", encodeProjects(next)).apply()
+                }
             }
             fun updateProject(id: String, transform: (StoryProject) -> StoryProject) {
                 persist(projects.map { if (it.id == id) transform(it) else it })
@@ -166,6 +192,15 @@ class MainActivity : ComponentActivity() {
                                     OutlinedButton(onClick = { page = 0 }) { Text("العودة للمكتبة") }
                                 } else {
                                     Text(current.title, color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), modifier = Modifier.weight(1f)) {
+                                            Text("↶ تراجع")
+                                        }
+                                        OutlinedButton(onClick = { redoEdit() }, enabled = redoStack.isNotEmpty(), modifier = Modifier.weight(1f)) {
+                                            Text("↷ إعادة")
+                                        }
+                                    }
+                                    Text("تراجع وإعادة حتى 40 خطوة تحرير.", color = Muted, fontSize = 11.sp)
                                     Text("محرر القصة", color = Muted)
                                     FieldLabel("عنوان المشروع")
                                     var projectTitle by remember(current.id, current.title) { mutableStateOf(current.title) }
