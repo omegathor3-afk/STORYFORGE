@@ -45,16 +45,17 @@ class PrepareStandaloneGameTests(unittest.TestCase):
                     runpy.run_path(str(SCRIPT), run_name="__main__")
             finally:
                 os.chdir(old_cwd)
-            return root, env_file.read_text(encoding="utf-8")
+            embedded = root / "player/src/main/assets/default.storygame"
+            embedded_data = embedded.read_bytes() if embedded.exists() else None
+            return embedded_data, env_file.read_text(encoding="utf-8")
 
     def test_valid_package_embeds_and_generates_unique_identity(self):
         package = make_package({"assets/storyforge_assets/cover.png": b"image"})
-        root, env_text = self.run_script(package)
-        embedded = root / "player/src/main/assets/default.storygame"
-        self.assertTrue(embedded.is_file())
+        embedded_data, env_text = self.run_script(package)
+        self.assertIsNotNone(embedded_data)
         self.assertIn("APPLICATION_ID=com.storyforge.games.", env_text)
         self.assertIn("GAME_TITLE=Demo Story", env_text)
-        with zipfile.ZipFile(embedded) as archive:
+        with zipfile.ZipFile(io.BytesIO(embedded_data)) as archive:
             self.assertEqual(json.loads(archive.read("game-manifest.json"))["title"], "Demo Story")
             self.assertEqual(json.loads(archive.read("storyforge-project.json"))[0]["title"], "Demo Story")
             self.assertEqual(archive.read("assets/storyforge_assets/cover.png"), b"image")
