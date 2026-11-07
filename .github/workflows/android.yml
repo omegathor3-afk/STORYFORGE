@@ -18,6 +18,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate standalone build script syntax
+        run: python3 -m py_compile scripts/prepare_standalone_game.py
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -34,6 +37,14 @@ jobs:
 
       - name: Build with Gradle
         run: gradle --no-daemon :app:assembleDebug :player:assembleDebug :academy:assembleDebug
+
+      - name: Verify standalone APK configuration
+        run: |
+          gradle --no-daemon :player:assembleDebug \\
+            -PgameApplicationId=com.storyforge.games.ci \\
+            -PgameDisplayName="CI Story Game" \\
+            -PgameVersionName=1.2.3 \\
+            -PgameVersionCode=2
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
