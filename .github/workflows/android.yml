@@ -1,5 +1,9 @@
 name: Android CI
 
+concurrency:
+  group: storyforge-android-build
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main ]
@@ -8,6 +12,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
