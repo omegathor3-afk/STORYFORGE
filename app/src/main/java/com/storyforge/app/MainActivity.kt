@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
             var deleteProjectId by remember { mutableStateOf<String?>(null) }
             var newTitle by remember { mutableStateOf("") }
             var newDescription by remember { mutableStateOf("") }
+            var newTemplate by remember { mutableStateOf("رعب") }
             var showCharacterDialog by remember { mutableStateOf(false) }
             var showVariableDialog by remember { mutableStateOf(false) }
             var characterName by remember { mutableStateOf("") }
@@ -844,13 +845,25 @@ class MainActivity : ComponentActivity() {
                     title = { Text("مشروع جديد") },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("اختر قالب البداية", color = Gold, fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("رعب", "غموض", "بقاء").forEach { template ->
+                                    FilterChip(
+                                        selected = newTemplate == template,
+                                        onClick = { newTemplate = template },
+                                        label = { Text(template) }
+                                    )
+                                }
+                            }
+                            Text("سننشئ لك أربعة مشاهد مترابطة واختيارات جاهزة، ويمكنك تعديل كل شيء لاحقًا.",
+                                color = Muted, fontSize = 12.sp)
                             OutlinedTextField(newTitle, { newTitle = it }, label = { Text("اسم القصة") }, singleLine = true)
                             OutlinedTextField(newDescription, { newDescription = it }, label = { Text("وصف مختصر") }, minLines = 2)
                         }
                     },
                     confirmButton = {
                         TextButton(onClick = {
-                            val project = StoryProject(title = newTitle.ifBlank { "قصة بلا عنوان" }, description = newDescription)
+                            val project = StoryProject(title = newTitle.ifBlank { "قصة بلا عنوان" }, description = newDescription, scenes = createStarterScenes(newTemplate))
                             persist(projects + project)
                             selectedId = project.id
                             selectedSceneId = project.scenes.first().id
@@ -1221,6 +1234,53 @@ internal fun restoreStoryZipBackup(input: InputStream, filesDir: File): List<Sto
         staging.deleteRecursively()
         if (previousAssets.exists() && root.exists()) previousAssets.deleteRecursively()
     }
+}
+
+private fun createStarterScenes(template: String): List<StoryScene> {
+    val openingId = UUID.randomUUID().toString()
+    val leftPathId = UUID.randomUUID().toString()
+    val rightPathId = UUID.randomUUID().toString()
+    val endingId = UUID.randomUUID().toString()
+    val opening = when (template) {
+        "غموض" -> StoryScene(
+            id = openingId, title = "الرسالة المجهولة",
+            text = "تجد رسالة بلا توقيع تحت بابك. الحبر ما زال رطبًا، وفي آخرها عنوان مكان لم تسمع به من قبل.",
+            choices = listOf("اذهب إلى العنوان", "مزّق الرسالة وابقَ في منزلك"),
+            choiceTargets = listOf(leftPathId, rightPathId)
+        )
+        "بقاء" -> StoryScene(
+            id = openingId, title = "الصباح الأخير",
+            text = "انقطعت الكهرباء والماء. حقيبتك شبه فارغة، وصوت خطوات يقترب من المبنى.",
+            choices = listOf("ابحث عن الطعام", "أمّن مكانًا للاختباء"),
+            choiceTargets = listOf(leftPathId, rightPathId)
+        )
+        else -> StoryScene(
+            id = openingId, title = "الطرقات على الباب",
+            text = "الساعة الثالثة بعد منتصف الليل. ثلاث طرقات بطيئة تهز الباب، ثم تسمع صوتًا يناديك باسمك من الخارج.",
+            choices = listOf("انظر من العين السحرية", "افتح الباب بحذر"),
+            choiceTargets = listOf(leftPathId, rightPathId)
+        )
+    }
+    val left = StoryScene(
+        id = leftPathId,
+        title = if (template == "غموض") "العنوان القديم" else if (template == "بقاء") "المخزن المهجور" else "عين الباب",
+        text = if (template == "غموض") "تصل إلى مبنى مهجور. على الجدار نفس الرمز المرسوم أسفل الرسالة." else if (template == "بقاء") "تعثر على مخزن صغير. الباب مفتوح، لكن شيئًا يتحرك خلف الصناديق." else "لا ترى أحدًا، لكن ظلًا طويلًا يمر أمام الباب رغم أن الممر خالٍ.",
+        choices = listOf("تابع ما بدأته"),
+        choiceTargets = listOf(endingId)
+    )
+    val right = StoryScene(
+        id = rightPathId,
+        title = if (template == "غموض") "الصمت" else if (template == "بقاء") "الغرفة الآمنة" else "الضيف",
+        text = if (template == "غموض") "تمزق الرسالة، ثم تلاحظ أن الكلمات تظهر من جديد على قصاصات الورق." else if (template == "بقاء") "تدفع خزانة ثقيلة أمام الباب. لديك وقت قصير لتقرر خطوتك التالية." else "ينفتح الباب ببطء. لا يوجد أحد، وعلى الأرض شيء تركه الزائر.",
+        choices = listOf("افحص الدليل"),
+        choiceTargets = listOf(endingId)
+    )
+    val ending = StoryScene(
+        id = endingId, title = "بداية الحكاية",
+        text = "هنا تبدأ قصتك الحقيقية. غيّر هذا المشهد، أضف شخصياتك، واصنع نهاية لا يتوقعها اللاعب.",
+        choices = emptyList(), choiceTargets = emptyList()
+    )
+    return listOf(opening, left, right, ending)
 }
 
 private fun encodeProjects(projects: List<StoryProject>): String {
