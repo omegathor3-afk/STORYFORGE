@@ -29,6 +29,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Run story engine tests
+        run: gradle --no-daemon :app:testDebugUnitTest
+
       - name: Build with Gradle
         run: gradle --no-daemon :app:assembleDebug
 
