@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:allowBackup="true"
-        android:label="STORYFORGE"\n        android:icon="@drawable/ic_storyforge"\n        android:roundIcon="@drawable/ic_storyforge"
+        android:label="STORYFORGE"
+        android:icon="@drawable/ic_storyforge"
+        android:roundIcon="@drawable/ic_storyforge"
         android:supportsRtl="true"
         android:theme="@style/Theme.StoryForge">
         <activity

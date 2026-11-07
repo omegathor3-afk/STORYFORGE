@@ -41,6 +41,12 @@ Variable identifiers can contain Arabic or Latin letters, digits, and underscore
 
 The project uses Kotlin, Jetpack Compose, Android SDK 35, Java 17, and Gradle. GitHub Actions builds a debug APK on pushes to `main` and uploads it as the `STORYFORGE-debug-apk` artifact.
 
-## Immersive play mode\n\n- Full-screen cinematic story mode with typewriter narration, scene artwork, dialogue cards, incoming-call interaction cues, haptic choice feedback, variable display, and per-scene looping audio.\n- Each scene can use its own imported image and audio assets. The immersive player uses the same branches, conditions, and effects as the studio preview.\n- STORYFORGE has a custom purple storybook launcher icon and animated branded intro. Each story also opens with its own title-screen intro using the project's cover art and description.\n\n## Current limitations
+## Immersive play mode
+
+- Full-screen cinematic story mode with typewriter narration, scene artwork, dialogue cards, incoming-call interaction cues, haptic choice feedback, variable display, and per-scene looping audio.
+- Each scene can use its own imported image and audio assets. The immersive player uses the same branches, conditions, and effects as the studio preview.
+- STORYFORGE has a custom purple storybook launcher icon and animated branded intro. Each story also opens with its own title-screen intro using the project's cover art and description.
+
+## Current limitations
 
 This is an actively developed project, not a final release. The visual node graph, richer dialogue/asset management, persistent playthrough saves, audio controls, full localization, and automated/device-level tests are still planned. The current preview state is session-only and resets when the preview is restarted.
