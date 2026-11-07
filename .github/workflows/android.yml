@@ -87,7 +87,7 @@ jobs:
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
             echo "ANDROID_STORE_PASSWORD=ci-store-password"
             echo "ANDROID_KEY_ALIAS=storyforge-ci"
-            echo "ANDROID_KEY_PASSWORD=ci-key-password"
+            echo "ANDROID_KEY_PASSWORD=ci-store-password"
           } >> "$GITHUB_ENV"
 
       - name: Build and verify signed standalone Release APK
