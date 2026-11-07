@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.Bundle
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.Locale
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -33,6 +35,9 @@ import androidx.compose.ui.unit.sp
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 private val Ink = Color(0xFF090B0E)
 private val Panel = Color(0xFF171C22)
@@ -185,6 +190,28 @@ class MainActivity : ComponentActivity() {
                 }.onFailure { Toast.makeText(this@MainActivity, "ملف JSON غير صالح أو تعذر قراءته", Toast.LENGTH_LONG).show() }
             }
 
+            val zipExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+                if (uri != null) runCatching {
+                    contentResolver.openOutputStream(uri)?.use { output ->
+                        writeStoryZipBackup(output, projects, filesDir)
+                    } ?: error("تعذر فتح ملف النسخة الاحتياطية")
+                    Toast.makeText(this@MainActivity, "تم إنشاء نسخة ZIP كاملة بالصور والصوت", Toast.LENGTH_LONG).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "فشل إنشاء النسخة الاحتياطية: ${it.message ?: "خطأ غير معروف"}", Toast.LENGTH_LONG).show() }
+            }
+            val zipImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null) runCatching {
+                    val restored = contentResolver.openInputStream(uri)?.use { input ->
+                        restoreStoryZipBackup(input, filesDir)
+                    } ?: error("تعذر قراءة ملف ZIP")
+                    require(restored.isNotEmpty()) { "النسخة لا تحتوي على مشاريع" }
+                    persist(restored)
+                    selectedId = restored.firstOrNull()?.id
+                    selectedSceneId = restored.firstOrNull()?.scenes?.firstOrNull()?.id
+                    page = 0
+                    Toast.makeText(this@MainActivity, "تم استرجاع ${restored.size} مشروع مع ملفات الوسائط", Toast.LENGTH_LONG).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "تعذر استعادة ZIP: ${it.message ?: "ملف غير صالح"}", Toast.LENGTH_LONG).show() }
+            }
+
             val current = projects.firstOrNull { it.id == selectedId }
 
             MaterialTheme(colorScheme = darkColorScheme(
@@ -255,6 +282,10 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                                Button(onClick = { zipExportLauncher.launch("STORYFORGE-full-backup.zip") },
+                                    modifier = Modifier.fillMaxWidth()) { Text("📦 نسخة كاملة ZIP (القصص + الصور + الصوت)") }
+                                OutlinedButton(onClick = { zipImportLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                                    modifier = Modifier.fillMaxWidth()) { Text("استعادة نسخة ZIP كاملة") }
                                 Button(onClick = { exportLauncher.launch("storyforge-backup.json") },
                                     modifier = Modifier.fillMaxWidth()) { Text("تصدير نسخة احتياطية إلى ملف") }
                                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*")) },
@@ -929,6 +960,51 @@ private fun EmptyPanel(title: String, subtitle: String) {
             Text(subtitle, color = Muted)
         }
     }
+}
+
+internal fun writeStoryZipBackup(output: OutputStream, projects: List<StoryProject>, filesDir: File) {
+    ZipOutputStream(output.buffered()).use { zip ->
+        zip.putNextEntry(ZipEntry("storyforge-projects.json"))
+        zip.write(encodeProjects(projects).toByteArray(Charsets.UTF_8))
+        zip.closeEntry()
+        projects.forEach { project ->
+            project.assets.forEach { asset ->
+                if (!asset.relativePath.startsWith("storyforge_assets/")) return@forEach
+                val source = File(filesDir, asset.relativePath).canonicalFile
+                val root = File(filesDir, "storyforge_assets").canonicalFile
+                if (!source.isFile || !source.path.startsWith(root.path + File.separator)) return@forEach
+                zip.putNextEntry(ZipEntry("assets/${asset.relativePath}"))
+                source.inputStream().buffered().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
+        }
+        zip.finish()
+    }
+}
+
+internal fun restoreStoryZipBackup(input: InputStream, filesDir: File): List<StoryProject> {
+    var projectJson: String? = null
+    val root = File(filesDir, "storyforge_assets").canonicalFile
+    ZipInputStream(input.buffered()).use { zip ->
+        while (true) {
+            val entry = zip.nextEntry ?: break
+            if (!entry.isDirectory && entry.name == "storyforge-projects.json") {
+                require(projectJson == null) { "ملف بيانات مكرر داخل ZIP" }
+                projectJson = zip.readBytes().toString(Charsets.UTF_8)
+            } else if (!entry.isDirectory && entry.name.startsWith("assets/storyforge_assets/")) {
+                val relative = entry.name.removePrefix("assets/")
+                val destination = File(filesDir, relative).canonicalFile
+                require(destination.path.startsWith(root.path + File.separator)) { "مسار ملف غير آمن" }
+                destination.parentFile?.mkdirs()
+                destination.outputStream().buffered().use { zip.copyTo(it) }
+            }
+            zip.closeEntry()
+        }
+    }
+    val json = projectJson ?: error("ملف بيانات القصة غير موجود داخل ZIP")
+    val projects = decodeProjects(json)
+    require(projects.isNotEmpty()) { "لا توجد مشاريع داخل النسخة" }
+    return projects
 }
 
 private fun encodeProjects(projects: List<StoryProject>): String {
