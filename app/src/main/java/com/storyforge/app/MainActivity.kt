@@ -33,7 +33,8 @@ data class StoryScene(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "مشهد جديد",
     val text: String = "",
-    val choices: List<String> = listOf("", "", "")
+    val choices: List<String> = listOf("", "", ""),
+    val choiceTargets: List<String?> = emptyList()
 )
 
 data class StoryProject(
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
             var backupText by remember { mutableStateOf("") }
             var importText by remember { mutableStateOf("") }
             var previewIndex by remember { mutableIntStateOf(0) }
+            var previewSceneId by remember { mutableStateOf<String?>(null) }
 
             fun persist(next: List<StoryProject>) {
                 projects = next
@@ -198,6 +200,27 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }, modifier = Modifier.fillMaxWidth(), singleLine = true,
                                                 label = { Text("الاختيار ${index + 1}") })
+                                            val target = scene.choiceTargets.getOrNull(index)
+                                            val targetLabel = when (target) {
+                                                "__END__" -> "نهاية القصة"
+                                                null -> "المشهد التالي تلقائيًا"
+                                                else -> current.scenes.firstOrNull { it.id == target }?.title ?: "وجهة غير موجودة"
+                                            }
+                                            TextButton(onClick = {
+                                                val destinations = current.scenes.map { it.id } + "__END__"
+                                                val next = if (target == null) destinations.first()
+                                                    else destinations[(destinations.indexOf(target).coerceAtLeast(-1) + 1) % destinations.size]
+                                                updateProject(current.id) { p ->
+                                                    p.copy(scenes = p.scenes.map { s ->
+                                                        if (s.id == scene.id) {
+                                                            val targets = s.choiceTargets.toMutableList()
+                                                            while (targets.size < s.choices.size) targets.add(null)
+                                                            targets[index] = next
+                                                            s.copy(choiceTargets = targets)
+                                                        } else s
+                                                    })
+                                                }
+                                            }) { Text("الوجهة: $targetLabel  ↻", color = Gold, fontSize = 12.sp) }
                                         }
                                         TextButton(onClick = {
                                             updateProject(current.id) { p ->
@@ -241,16 +264,35 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     Text("معاينة تفاعلية", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                     Text(current.title, color = Muted)
-                                    val safeIndex = previewIndex.coerceIn(0, current.scenes.lastIndex)
+                                    if (previewSceneId == null || (previewSceneId != "__END__" && current.scenes.none { it.id == previewSceneId })) {
+                                        previewSceneId = current.scenes.first().id
+                                        previewIndex = 0
+                                    }
+                                    val safeIndex = if (previewSceneId == "__END__") current.scenes.lastIndex
+                                        else current.scenes.indexOfFirst { it.id == previewSceneId }.coerceAtLeast(0)
                                     val previewScene = current.scenes[safeIndex]
-                                    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+                                    if (previewSceneId == "__END__") {
+                                        EmptyPanel("انتهت القصة", "وصل اللاعب إلى نهاية هذا المسار.")
+                                    } else Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
                                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             Text("المشهد ${safeIndex + 1} / ${current.scenes.size}", color = Gold, fontSize = 12.sp)
                                             Text(previewScene.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                             Text(previewScene.text.ifBlank { "هذا المشهد لا يحتوي على نص بعد." }, lineHeight = 25.sp)
-                                            previewScene.choices.filter { it.isNotBlank() }.forEach { choice ->
-                                                OutlinedButton(onClick = {
-                                                    if (previewIndex < current.scenes.lastIndex) previewIndex++
+                                            previewScene.choices.forEachIndexed { choiceIndex, choice ->
+                                                if (choice.isNotBlank()) OutlinedButton(onClick = {
+                                                    val target = previewScene.choiceTargets.getOrNull(choiceIndex)
+                                                    when {
+                                                        target == "__END__" -> { previewSceneId = "__END__"; previewIndex = current.scenes.size }
+                                                        target != null && current.scenes.any { it.id == target } -> {
+                                                            previewSceneId = target
+                                                            previewIndex = current.scenes.indexOfFirst { it.id == target }
+                                                        }
+                                                        previewIndex < current.scenes.lastIndex -> {
+                                                            previewIndex++
+                                                            previewSceneId = current.scenes[previewIndex].id
+                                                        }
+                                                        else -> { previewSceneId = "__END__"; previewIndex = current.scenes.size }
+                                                    }
                                                 }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
                                             }
                                             if (previewScene.choices.none { it.isNotBlank() }) {
@@ -262,8 +304,11 @@ class MainActivity : ComponentActivity() {
                                             if (previewIndex >= current.scenes.lastIndex) Text("وصلت إلى آخر مشهد في النسخة الحالية.", color = Gold)
                                         }
                                     }
-                                    OutlinedButton(onClick = { previewIndex = 0 }, modifier = Modifier.fillMaxWidth()) { Text("إعادة من البداية") }
-                                    Text("المعاينة الحالية تنتقل للمشهد التالي عند اختيار أي قرار. ربط شروط وتفرعات مستقلة قادم في محرك القصة.", color = Muted, fontSize = 12.sp)
+                                    OutlinedButton(onClick = {
+                                        previewIndex = 0
+                                        previewSceneId = current.scenes.firstOrNull()?.id
+                                    }, modifier = Modifier.fillMaxWidth()) { Text("إعادة من البداية") }
+                                    Text("كل اختيار يمكن توجيهه إلى مشهد مستقل أو إنهاء القصة. الوجهة التلقائية تتابع للمشهد التالي.", color = Muted, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -362,7 +407,11 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             val s = JSONObject()
             s.put("id", scene.id); s.put("title", scene.title); s.put("text", scene.text)
             val choices = JSONArray(); scene.choices.forEach { choices.put(it) }
-            s.put("choices", choices); scenes.put(s)
+            s.put("choices", choices)
+            val targets = JSONArray()
+            scene.choiceTargets.forEach { targets.put(it ?: JSONObject.NULL) }
+            s.put("choiceTargets", targets)
+            scenes.put(s)
         }
         val characters = JSONArray(); project.characters.forEach { characters.put(it) }
         p.put("scenes", scenes); p.put("characters", characters); array.put(p)
@@ -382,7 +431,10 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 id = s.optString("id", UUID.randomUUID().toString()),
                 title = s.optString("title", "مشهد جديد"),
                 text = s.optString("text", ""),
-                choices = (0 until choicesJson.length()).map { choicesJson.optString(it) }
+                choices = (0 until choicesJson.length()).map { choicesJson.optString(it) },
+                choiceTargets = s.optJSONArray("choiceTargets")?.let { targets ->
+                    (0 until targets.length()).map { k -> if (targets.isNull(k)) null else targets.optString(k) }
+                } ?: emptyList()
             )
         }
         val charsJson = p.optJSONArray("characters") ?: JSONArray()
