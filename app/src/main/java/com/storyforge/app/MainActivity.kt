@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
             var selectedSceneId by remember { mutableStateOf<String?>(null) }
             var page by remember { mutableIntStateOf(0) }
             var showNewProject by remember { mutableStateOf(false) }
+            var librarySearch by remember { mutableStateOf("") }
             var deleteProjectId by remember { mutableStateOf<String?>(null) }
             var newTitle by remember { mutableStateOf("") }
             var newDescription by remember { mutableStateOf("") }
@@ -229,6 +230,10 @@ class MainActivity : ComponentActivity() {
             }
 
             val current = projects.firstOrNull { it.id == selectedId }
+            val visibleProjects = projects.filter { project ->
+                librarySearch.isBlank() || project.title.contains(librarySearch.trim(), ignoreCase = true) ||
+                    project.description.contains(librarySearch.trim(), ignoreCase = true)
+            }
 
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = Gold, secondary = Color(0xFF8CBAA5),
@@ -278,8 +283,21 @@ class MainActivity : ComponentActivity() {
                                 Button(onClick = { showNewProject = true }, modifier = Modifier.fillMaxWidth()) {
                                     Text("＋ إنشاء مشروع جديد")
                                 }
+                                OutlinedTextField(
+                                    value = librarySearch,
+                                    onValueChange = { librarySearch = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    label = { Text("ابحث في قصصك") },
+                                    placeholder = { Text("اكتب اسم المشروع أو وصفه...") },
+                                    trailingIcon = {
+                                        if (librarySearch.isNotBlank()) TextButton(onClick = { librarySearch = "" }) { Text("مسح") }
+                                    }
+                                )
+                                Text("${visibleProjects.size} من ${projects.size} مشروع", color = Muted, fontSize = 11.sp)
                                 if (projects.isEmpty()) EmptyPanel("لا توجد قصص بعد", "ابدأ مشروعك الأول من الزر بالأعلى.")
-                                projects.forEach { project ->
+                                else if (visibleProjects.isEmpty()) EmptyPanel("لا توجد نتائج", "جرّب كلمة بحث مختلفة أو امسح البحث.")
+                                visibleProjects.forEach { project ->
                                     Card(
                                         modifier = Modifier.fillMaxWidth().clickable {
                                             selectedId = project.id
