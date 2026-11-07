@@ -40,7 +40,7 @@ private val Night = Color(0xFF05070B)
 private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
-private data class SceneProp(val type:String,val x:Float,val y:Float,val scale:Float,val foreground:Boolean)
+internal data class SceneProp(val type:String,val x:Float,val y:Float,val scale:Float,val foreground:Boolean)
 private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int,val atmosphereEffects:List<String>,val environmentProps:List<SceneProp>)
 private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?,val visualTheme:String,val showSceneNumbers:Boolean)
 
