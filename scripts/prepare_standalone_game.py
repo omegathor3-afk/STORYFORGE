@@ -84,7 +84,6 @@ if icon_url:
     icon_path = pathlib.Path("player/src/main/res/drawable-nodpi/game_icon.png")
     icon_path.parent.mkdir(parents=True, exist_ok=True)
     icon_path.write_bytes(icon)
-    pathlib.Path("player/src/main/res/drawable/game_icon.xml").unlink(missing_ok=True)
 
 tmp.unlink(missing_ok=True)
 print("Validated and embedded standalone story package.")

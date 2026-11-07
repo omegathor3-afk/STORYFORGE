@@ -43,7 +43,7 @@ jobs:
           package = os.environ["APPLICATION_ID"].strip()
           if not title or len(title) > 40:
               sys.exit("Game title must contain 1-40 characters")
-          if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*){1,5}", package):
+          if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){1,5}", package):
               sys.exit("Invalid Android application ID")
           if package == "com.storyforge.player":
               sys.exit("Standalone games must use a unique application ID")
