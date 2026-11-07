@@ -192,16 +192,6 @@ class PlayerActivity : ComponentActivity() {
             }
         }
         val ended = scene == null || sceneId == "__END__"
-        LaunchedEffect(scene?.id, revealed) {
-            val current = scene ?: return@LaunchedEffect
-            if (current.choiceTimerSeconds <= 0 || revealed < current.text.length) return@LaunchedEffect
-            val available = current.choices.filter { it.text.isNotBlank() && condition(it.condition) }
-            if (available.isEmpty()) return@LaunchedEffect
-            remainingSeconds = current.choiceTimerSeconds
-            while (remainingSeconds > 0) { delay(1000); remainingSeconds-- }
-            val timedChoice = available.getOrNull(current.timeoutChoiceIndex.coerceIn(0, available.lastIndex))
-            if (timedChoice != null && sceneId == current.id) choose(timedChoice)
-        }
         LaunchedEffect(scene?.id) {
             revealed = 0
             val size = scene?.text?.length ?: 0
@@ -224,6 +214,16 @@ class PlayerActivity : ComponentActivity() {
                 !choice.target.isNullOrBlank() && game.scenes.any { it.id==choice.target } -> choice.target
                 else -> game.scenes.getOrNull(game.scenes.indexOfFirst { it.id==scene?.id }+1)?.id ?: "__END__"
             }
+        }
+        LaunchedEffect(scene?.id, revealed) {
+            val current = scene ?: return@LaunchedEffect
+            if (current.choiceTimerSeconds <= 0 || revealed < current.text.length) return@LaunchedEffect
+            val available = current.choices.filter { it.text.isNotBlank() && condition(it.condition) }
+            if (available.isEmpty()) return@LaunchedEffect
+            remainingSeconds = current.choiceTimerSeconds
+            while (remainingSeconds > 0) { delay(1000); remainingSeconds-- }
+            val timedChoice = available.getOrNull(current.timeoutChoiceIndex.coerceIn(0, available.lastIndex))
+            if (timedChoice != null && sceneId == current.id) choose(timedChoice)
         }
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
