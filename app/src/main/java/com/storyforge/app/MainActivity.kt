@@ -632,7 +632,7 @@ class MainActivity : ComponentActivity() {
                                             "rocks" to "🪨 صخور", "fungus" to "🍄 فطر متوهج",
                                             "broken_fence" to "▥ سياج مكسور", "lantern" to "🏮 فانوس",
                                             "bones" to "☠ عظام", "hanging_roots" to "〰 جذور معلّقة",
-                                            "shrine" to "♜ ضريح مهجور", "crates" to "▦ صناديق قديمة"
+                                            "shrine" to "♜ ضريح مهجور", "crates" to "▦ صناديق قديمة", "grave" to "† شاهد قبر", "thorn_bush" to "♧ شجيرة شوكية", "broken_cart" to "عربة محطمة", "well" to "بئر مهجور", "hanging_cage" to "قفص معلّق", "ruined_door" to "باب متهالك"
                                         )
                                         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             propOptions.chunked(2).forEach { optionRow ->

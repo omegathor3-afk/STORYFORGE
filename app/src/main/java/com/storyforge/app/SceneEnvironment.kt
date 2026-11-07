@@ -83,6 +83,37 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                     drawLine(Color(0xFF756044),Offset(x-unit*0.4f,y-unit*0.4f),Offset(x+unit*0.4f,y+unit*0.3f),unit*0.07f)
                     drawLine(Color(0xFF756044),Offset(x+unit*0.4f,y-unit*0.4f),Offset(x-unit*0.4f,y+unit*0.3f),unit*0.07f)
                 }
+                "grave" -> {
+                    drawRect(Color(0xFF55564D), Offset(x-unit*0.34f,y-unit*0.7f), androidx.compose.ui.geometry.Size(unit*0.68f,unit*0.9f), androidx.compose.ui.geometry.CornerRadius(unit*0.18f))
+                    drawLine(Color(0xFF242820),Offset(x,y-unit*0.48f),Offset(x,y+unit*0.02f),unit*0.07f)
+                    drawLine(Color(0xFF242820),Offset(x-unit*0.16f,y-unit*0.32f),Offset(x+unit*0.16f,y-unit*0.32f),unit*0.07f)
+                }
+                "thorn_bush" -> {
+                    for(i in 0..5){val bx=x-unit*0.55f+i*unit*0.22f;val by=y+sin(i*1.7f)*unit*0.12f;drawLine(Color(0xFF28352A),Offset(bx,by),Offset(bx+unit*0.12f,by-unit*(0.35f+(i%2)*0.2f)),unit*0.09f,cap=StrokeCap.Round);drawLine(Color(0xFF6A7354),Offset(bx+unit*0.12f,by-unit*0.35f),Offset(bx+unit*0.25f,by-unit*0.4f),unit*0.035f)}
+                }
+                "broken_cart" -> {
+                    drawLine(Color(0xFF4A3829),Offset(x-unit*0.58f,y-unit*0.22f),Offset(x+unit*0.48f,y-unit*0.05f),unit*0.13f)
+                    drawCircle(Color(0xFF292B27),unit*0.22f,Offset(x-unit*0.36f,y+unit*0.24f),style=Stroke(width=unit*0.08f))
+                    drawCircle(Color(0xFF292B27),unit*0.22f,Offset(x+unit*0.42f,y+unit*0.24f),style=Stroke(width=unit*0.08f))
+                    drawLine(Color(0xFF70563A),Offset(x-unit*0.42f,y-unit*0.2f),Offset(x-unit*0.55f,y-unit*0.65f),unit*0.08f)
+                }
+                "well" -> {
+                    drawOval(Color(0xFF343A34),Offset(x-unit*0.62f,y-unit*0.2f),androidx.compose.ui.geometry.Size(unit*1.24f,unit*0.52f))
+                    drawOval(Color(0xFF080C0A),Offset(x-unit*0.38f,y-unit*0.13f),androidx.compose.ui.geometry.Size(unit*0.76f,unit*0.28f))
+                    drawLine(Color(0xFF3C3428),Offset(x-unit*0.62f,y-unit*0.32f),Offset(x-unit*0.62f,y-unit*0.85f),unit*0.08f)
+                    drawLine(Color(0xFF3C3428),Offset(x+unit*0.62f,y-unit*0.32f),Offset(x+unit*0.62f,y-unit*0.85f),unit*0.08f)
+                    drawLine(Color(0xFF3C3428),Offset(x-unit*0.68f,y-unit*0.82f),Offset(x+unit*0.68f,y-unit*0.82f),unit*0.08f)
+                }
+                "hanging_cage" -> {
+                    drawLine(Color(0xFF46483F),Offset(x,y-unit*1.0f),Offset(x,y-unit*0.68f),unit*0.06f)
+                    drawRect(Color(0xFF292E2A),Offset(x-unit*0.35f,y-unit*0.68f),androidx.compose.ui.geometry.Size(unit*0.7f,unit*0.92f),style=Stroke(width=unit*0.07f))
+                    for(i in -1..1)drawLine(Color(0xFF454B42),Offset(x+i*unit*0.16f,y-unit*0.66f),Offset(x+i*unit*0.16f,y+unit*0.22f),unit*0.045f)
+                }
+                "ruined_door" -> {
+                    drawRect(Color(0xFF382F25),Offset(x-unit*0.48f,y-unit*0.82f),androidx.compose.ui.geometry.Size(unit*0.96f,unit*1.1f))
+                    drawRect(Color(0xFF101512),Offset(x-unit*0.34f,y-unit*0.65f),androidx.compose.ui.geometry.Size(unit*0.68f,unit*0.93f))
+                    drawLine(Color(0xFF6A5137),Offset(x-unit*0.42f,y-unit*0.35f),Offset(x+unit*0.35f,y+unit*0.05f),unit*0.08f)
+                }
             }
         }
     }
