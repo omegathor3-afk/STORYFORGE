@@ -982,29 +982,106 @@ internal fun writeStoryZipBackup(output: OutputStream, projects: List<StoryProje
     }
 }
 
-internal fun restoreStoryZipBackup(input: InputStream, filesDir: File): List<StoryProject> {
-    var projectJson: String? = null
-    val root = File(filesDir, "storyforge_assets").canonicalFile
-    ZipInputStream(input.buffered()).use { zip ->
-        while (true) {
-            val entry = zip.nextEntry ?: break
-            if (!entry.isDirectory && entry.name == "storyforge-projects.json") {
-                require(projectJson == null) { "ملف بيانات مكرر داخل ZIP" }
-                projectJson = zip.readBytes().toString(Charsets.UTF_8)
-            } else if (!entry.isDirectory && entry.name.startsWith("assets/storyforge_assets/")) {
-                val relative = entry.name.removePrefix("assets/")
-                val destination = File(filesDir, relative).canonicalFile
-                require(destination.path.startsWith(root.path + File.separator)) { "مسار ملف غير آمن" }
-                destination.parentFile?.mkdirs()
-                destination.outputStream().buffered().use { zip.copyTo(it) }
-            }
-            zip.closeEntry()
-        }
+private const val ZIP_MAX_ENTRIES = 500
+private const val ZIP_MAX_ENTRY_BYTES = 20L * 1024L * 1024L
+private const val ZIP_MAX_TOTAL_BYTES = 100L * 1024L * 1024L
+private const val ZIP_MAX_JSON_BYTES = 10L * 1024L * 1024L
+
+private fun isSafeStoryAssetPath(path: String): Boolean {
+    if (!path.startsWith("storyforge_assets/") || path.startsWith("/") || path.contains('\\\\')) return false
+    val parts = path.split('/')
+    return parts.size >= 3 && parts.none { it.isBlank() || it == "." || it == ".." }
+}
+
+private fun readZipEntryLimited(input: InputStream, limit: Long): ByteArray {
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    var count = 0L
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        count += read
+        require(count <= limit) { "ملف داخل ZIP أكبر من الحد المسموح" }
+        output.write(buffer, 0, read)
     }
-    val json = projectJson ?: error("ملف بيانات القصة غير موجود داخل ZIP")
-    val projects = decodeProjects(json)
-    require(projects.isNotEmpty()) { "لا توجد مشاريع داخل النسخة" }
-    return projects
+    return output.toByteArray()
+}
+
+internal fun restoreStoryZipBackup(input: InputStream, filesDir: File): List<StoryProject> {
+    val staging = File(filesDir, ".storyforge_restore_${UUID.randomUUID()}")
+    val stagedAssets = File(staging, "storyforge_assets")
+    val root = File(filesDir, "storyforge_assets")
+    val previousAssets = File(filesDir, ".storyforge_assets_previous_${UUID.randomUUID()}")
+    var previousMoved = false
+    try {
+        require(staging.mkdirs()) { "تعذر تجهيز مساحة الاستعادة" }
+        var projectJson: String? = null
+        var totalBytes = 0L
+        var entryCount = 0
+        val seenEntries = mutableSetOf<String>()
+        ZipInputStream(input.buffered()).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                entryCount++
+                require(entryCount <= ZIP_MAX_ENTRIES) { "النسخة تحتوي على ملفات أكثر من المسموح" }
+                if (entry.isDirectory) {
+                    zip.closeEntry()
+                    continue
+                }
+                val name = entry.name
+                require(!name.startsWith("/") && !name.contains('\\\\') &&
+                    name.split('/').none { it == "." || it == ".." || it.isBlank() }) { "مسار ملف غير آمن داخل ZIP" }
+                require(seenEntries.add(name)) { "النسخة تحتوي على ملف مكرر" }
+                when {
+                    name == "storyforge-projects.json" -> {
+                        val bytes = readZipEntryLimited(zip, ZIP_MAX_JSON_BYTES)
+                        totalBytes += bytes.size
+                        require(totalBytes <= ZIP_MAX_TOTAL_BYTES) { "حجم النسخة أكبر من المسموح" }
+                        projectJson = bytes.toString(Charsets.UTF_8)
+                    }
+                    name.startsWith("assets/storyforge_assets/") -> {
+                        val relative = name.removePrefix("assets/")
+                        require(isSafeStoryAssetPath(relative)) { "مسار أصل غير آمن داخل ZIP" }
+                        val destination = File(stagedAssets, relative.removePrefix("storyforge_assets/")).canonicalFile
+                        require(destination.path.startsWith(stagedAssets.canonicalPath + File.separator)) {
+                            "مسار ملف غير آمن داخل ZIP"
+                        }
+                        destination.parentFile?.mkdirs()
+                        val bytes = readZipEntryLimited(zip, ZIP_MAX_ENTRY_BYTES)
+                        totalBytes += bytes.size
+                        require(totalBytes <= ZIP_MAX_TOTAL_BYTES) { "حجم النسخة أكبر من المسموح" }
+                        destination.outputStream().buffered().use { it.write(bytes) }
+                    }
+                    else -> error("النسخة تحتوي على عنصر غير مدعوم: $name")
+                }
+                zip.closeEntry()
+            }
+        }
+
+        val json = projectJson ?: error("ملف بيانات القصة غير موجود داخل ZIP")
+        val projects = decodeProjects(json)
+        require(projects.isNotEmpty()) { "لا توجد مشاريع داخل النسخة" }
+        require(projects.flatMap { it.assets }.all { isSafeStoryAssetPath(it.relativePath) }) {
+            "بيانات النسخة تحتوي على مسار أصل غير آمن"
+        }
+
+        if (root.exists()) {
+            require(root.renameTo(previousAssets)) { "تعذر حفظ ملفات الأصول الحالية مؤقتًا" }
+            previousMoved = true
+        }
+        if (!stagedAssets.exists()) require(stagedAssets.mkdirs()) { "تعذر تجهيز ملفات الأصول المستعادة" }
+        if (!stagedAssets.renameTo(root)) {
+            if (previousMoved) previousAssets.renameTo(root)
+            previousMoved = false
+            error("تعذر تثبيت ملفات الأصول المستعادة")
+        }
+        if (previousMoved) previousAssets.deleteRecursively()
+        return projects
+    } finally {
+        if (previousMoved && !root.exists()) previousAssets.renameTo(root)
+        staging.deleteRecursively()
+        if (previousAssets.exists() && root.exists()) previousAssets.deleteRecursively()
+    }
 }
 
 private fun encodeProjects(projects: List<StoryProject>): String {
