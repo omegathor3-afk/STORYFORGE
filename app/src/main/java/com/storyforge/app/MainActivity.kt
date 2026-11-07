@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
             var selectedSceneId by remember { mutableStateOf<String?>(null) }
             var page by remember { mutableIntStateOf(0) }
             var showNewProject by remember { mutableStateOf(false) }
+            var deleteProjectId by remember { mutableStateOf<String?>(null) }
             var newTitle by remember { mutableStateOf("") }
             var newDescription by remember { mutableStateOf("") }
             var showCharacterDialog by remember { mutableStateOf(false) }
@@ -136,6 +137,9 @@ class MainActivity : ComponentActivity() {
                                             Text("${project.scenes.size} مشاهد  •  ${project.characters.size} شخصيات",
                                                 color = Color(0xFF8CBAA5), fontSize = 12.sp)
                                             Text("فتح الاستوديو ←", color = Gold, fontSize = 13.sp)
+                                            TextButton(onClick = { deleteProjectId = project.id }) {
+                                                Text("حذف المشروع", color = Color(0xFFE18B83), fontSize = 12.sp)
+                                            }
                                         }
                                     }
                                 }
@@ -323,6 +327,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            if (deleteProjectId != null) {
+                val deleting = projects.firstOrNull { it.id == deleteProjectId }
+                AlertDialog(
+                    onDismissRequest = { deleteProjectId = null },
+                    title = { Text("حذف المشروع؟") },
+                    text = { Text("سيتم حذف «${deleting?.title ?: "هذا المشروع"}» من هذا الجهاز. لا يمكن التراجع عن الحذف.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val id = deleteProjectId
+                            persist(projects.filterNot { it.id == id })
+                            if (selectedId == id) {
+                                selectedId = null
+                                selectedSceneId = null
+                                previewSceneId = null
+                                page = 0
+                            }
+                            deleteProjectId = null
+                        }) { Text("حذف", color = Color(0xFFE18B83)) }
+                    },
+                    dismissButton = { TextButton(onClick = { deleteProjectId = null }) { Text("إلغاء") } }
+                )
+            }
             if (showNewProject) {
                 AlertDialog(
                     onDismissRequest = { showNewProject = false },
