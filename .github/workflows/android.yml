@@ -75,12 +75,14 @@ jobs:
           KEYSTORE_PATH="$RUNNER_TEMP/storyforge-ci-upload.jks"
           keytool -genkeypair -noprompt \
             -keystore "$KEYSTORE_PATH" \
+            -storetype JKS \
             -storepass "ci-store-password" \
             -keypass "ci-key-password" \
             -alias "storyforge-ci" \
             -dname "CN=STORYFORGE CI" \
             -validity 2 -keyalg RSA -keysize 2048
           chmod 600 "$KEYSTORE_PATH"
+          keytool -list -v -keystore "$KEYSTORE_PATH" -storetype JKS -storepass "ci-store-password" -alias "storyforge-ci" >/dev/null
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
             echo "ANDROID_STORE_PASSWORD=ci-store-password"
