@@ -1,6 +1,9 @@
 package com.storyforge.app
 
 import android.content.Context
+import android.app.DownloadManager
+import android.net.Uri
+import android.os.Environment
 import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.Bundle
@@ -13,6 +16,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import net.openid.appauth.AuthorizationRequest
+import net.openid.appauth.AuthorizationResponse
+import net.openid.appauth.AuthorizationService
+import net.openid.appauth.AuthorizationServiceConfiguration
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.ResponseTypeValues
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,6 +129,38 @@ class MainActivity : ComponentActivity() {
             var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
             var showImmersivePlayer by remember { mutableStateOf(false) }
             var showBrandIntro by remember { mutableStateOf(true) }
+            var cloudApiBaseUrl by remember { mutableStateOf(prefs.getString("cloud_api_base_url", "") ?: "") }
+            var cloudOidcIssuer by remember { mutableStateOf(prefs.getString("cloud_oidc_issuer", "") ?: "") }
+            var cloudOidcClientId by remember { mutableStateOf(prefs.getString("cloud_oidc_client_id", "") ?: "") }
+            var cloudOidcAudience by remember { mutableStateOf(prefs.getString("cloud_oidc_audience", "") ?: "") }
+            var cloudAccessToken by remember { mutableStateOf<String?>(null) }
+            var cloudJobId by remember { mutableStateOf<String?>(null) }
+            var cloudJobStatus by remember { mutableStateOf("queued") }
+            var cloudArtifactAvailable by remember { mutableStateOf(false) }
+            var cloudBusy by remember { mutableStateOf(false) }
+            var cloudMessage by remember { mutableStateOf("") }
+            val cloudAuthService = remember { AuthorizationService(this@MainActivity) }
+            DisposableEffect(cloudAuthService) { onDispose { cloudAuthService.dispose() } }
+            val cloudAuthLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                val data = result.data
+                val authResponse = data?.let { AuthorizationResponse.fromIntent(it) }
+                val authError = data?.let { AuthorizationException.fromIntent(it) }
+                if (authResponse != null) {
+                    cloudAuthService.performTokenRequest(authResponse.createTokenExchangeRequest()) { tokenResponse, tokenError ->
+                        runOnUiThread {
+                            if (tokenResponse?.accessToken != null) {
+                                cloudAccessToken = tokenResponse.accessToken
+                                cloudMessage = "تم تسجيل الدخول بنجاح. يمكنك بدء بناء اللعبة."
+                            } else {
+                                cloudAccessToken = null
+                                cloudMessage = "تعذر إكمال تسجيل الدخول: ${tokenError?.errorDescription ?: "استجابة غير صالحة"}"
+                            }
+                        }
+                    }
+                } else if (authError != null && authError != AuthorizationException.AuthorizationCanceled) {
+                    cloudMessage = "فشل تسجيل الدخول: ${authError.errorDescription ?: "خطأ في المصادقة"}"
+                }
+            }
             fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {
                 if (recordHistory && projects != next) {
                     undoStack.add(projects.toList())
@@ -834,6 +879,119 @@ class MainActivity : ComponentActivity() {
                                 BuildCenter(
                                     project = current,
                                     diagnostics = current?.let { diagnoseStory(it) }.orEmpty(),
+                                    cloudApiBaseUrl = cloudApiBaseUrl,
+                                    oidcIssuer = cloudOidcIssuer,
+                                    oidcClientId = cloudOidcClientId,
+                                    oidcAudience = cloudOidcAudience,
+                                    isAuthenticated = cloudAccessToken != null,
+                                    jobId = cloudJobId,
+                                    jobStatus = cloudJobStatus,
+                                    artifactAvailable = cloudArtifactAvailable,
+                                    busy = cloudBusy,
+                                    message = cloudMessage,
+                                    onSaveSettings = { api, issuer, clientId, audience ->
+                                        cloudApiBaseUrl = api.trimEnd('/')
+                                        cloudOidcIssuer = issuer
+                                        cloudOidcClientId = clientId
+                                        cloudOidcAudience = audience
+                                        prefs.edit()
+                                            .putString("cloud_api_base_url", cloudApiBaseUrl)
+                                            .putString("cloud_oidc_issuer", issuer)
+                                            .putString("cloud_oidc_client_id", clientId)
+                                            .putString("cloud_oidc_audience", audience)
+                                            .apply()
+                                        cloudMessage = "تم حفظ إعدادات الاتصال على هذا الجهاز."
+                                    },
+                                    onSignIn = { issuer, clientId, audience ->
+                                        if (!issuer.startsWith("https://") || clientId.isBlank()) {
+                                            cloudMessage = "أدخل OIDC Issuer وClient ID صحيحين أولًا."
+                                        } else {
+                                            cloudBusy = true
+                                            AuthorizationServiceConfiguration.fetchFromIssuer(Uri.parse(issuer)) { config, error ->
+                                                runOnUiThread {
+                                                    cloudBusy = false
+                                                    if (config == null) {
+                                                        cloudMessage = "تعذر اكتشاف إعدادات تسجيل الدخول: ${error?.localizedMessage ?: "راجع رابط Issuer"}"
+                                                    } else {
+                                                        val builder = AuthorizationRequest.Builder(
+                                                            config, clientId, ResponseTypeValues.CODE,
+                                                            Uri.parse("com.storyforge.app:/oauth2redirect")
+                                                        ).setScope("openid profile email")
+                                                        if (audience.isNotBlank()) builder.setAdditionalParameters(mapOf("audience" to audience))
+                                                        cloudAuthLauncher.launch(cloudAuthService.getAuthorizationRequestIntent(builder.build()))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onStartBuild = { storyUrl, title, appId, version, versionCode, buildType ->
+                                        val token = cloudAccessToken
+                                        if (token == null) {
+                                            cloudMessage = "سجّل الدخول أولًا."
+                                        } else {
+                                            cloudBusy = true
+                                            cloudMessage = "جارٍ إرسال طلب البناء..."
+                                            lifecycleScope.launch {
+                                                runCatching {
+                                                    withContext(Dispatchers.IO) {
+                                                        CloudBuildApi.start(cloudApiBaseUrl, token, storyUrl, title, appId, version, versionCode, buildType)
+                                                    }
+                                                }.onSuccess { job ->
+                                                    cloudJobId = job.jobId
+                                                    cloudJobStatus = job.status
+                                                    cloudArtifactAvailable = false
+                                                    cloudMessage = "تم إرسال الطلب بنجاح."
+                                                }.onFailure { error ->
+                                                    cloudMessage = error.message ?: "تعذر بدء البناء."
+                                                }
+                                                cloudBusy = false
+                                            }
+                                        }
+                                    },
+                                    onRefresh = {
+                                        val token = cloudAccessToken
+                                        val id = cloudJobId
+                                        if (token != null && id != null) {
+                                            cloudBusy = true
+                                            lifecycleScope.launch {
+                                                runCatching {
+                                                    withContext(Dispatchers.IO) { CloudBuildApi.status(cloudApiBaseUrl, token, id) }
+                                                }.onSuccess { status ->
+                                                    cloudJobStatus = status.status
+                                                    cloudArtifactAvailable = status.artifactAvailable
+                                                    cloudMessage = when (status.status) {
+                                                        "completed" -> if (status.artifactAvailable) "اكتمل البناء والملف جاهز للتنزيل." else "اكتمل البناء، جارٍ تجهيز ملف النتائج."
+                                                        "failed" -> "فشل البناء. افتح سجل GitHub Actions لمعرفة التفاصيل."
+                                                        else -> "البناء ما زال قيد التنفيذ."
+                                                    }
+                                                }.onFailure { error -> cloudMessage = error.message ?: "تعذر تحديث الحالة." }
+                                                cloudBusy = false
+                                            }
+                                        }
+                                    },
+                                    onDownload = {
+                                        val token = cloudAccessToken
+                                        val id = cloudJobId
+                                        if (token != null && id != null) {
+                                            cloudBusy = true
+                                            lifecycleScope.launch {
+                                                runCatching {
+                                                    withContext(Dispatchers.IO) { CloudBuildApi.artifactDownloadUrl(cloudApiBaseUrl, token, id) }
+                                                }.onSuccess { signedUrl ->
+                                                    runCatching {
+                                                        val request = DownloadManager.Request(Uri.parse(signedUrl))
+                                                            .setTitle("STORYFORGE - APK")
+                                                            .setDescription("جارٍ تنزيل ملف اللعبة المبنية")
+                                                            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                                            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "STORYFORGE-$id.zip")
+                                                        (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+                                                        cloudMessage = "بدأ التنزيل الآمن داخل مجلد Downloads."
+                                                    }.onFailure { cloudMessage = "تعذر بدء التنزيل: ${it.message}" }
+                                                }.onFailure { cloudMessage = it.message ?: "تعذر الحصول على رابط التنزيل." }
+                                                cloudBusy = false
+                                            }
+                                        }
+                                    },
                                     onExport = {
                                         current?.let { project ->
                                             gamePackageLauncher.launch(project.title.replace(Regex("[^A-Za-z0-9._-]+"), "_") + ".storygame")

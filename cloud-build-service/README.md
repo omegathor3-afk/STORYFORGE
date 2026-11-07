@@ -26,5 +26,25 @@ Run db/schema.sql once against PostgreSQL. Then install dependencies and run npm
 
 The API scopes reads to the authenticated subject, allows at most two active jobs per account, restricts download URLs to configured HTTPS hosts, and mints GitHub App installation tokens server-side.
 
-## Not yet integrated
-The Android app still needs an OIDC sign-in flow and API client. Configure a real identity provider and database before exposing these routes. No credentials are committed in this directory.
+## Android app connection
+
+The Studio Build Center now includes native OIDC Authorization Code + PKCE sign-in and calls the three API routes directly. It keeps the access token in memory only; it is not written to preferences or logs.
+
+In the Android app's **مركز بناء الألعاب** screen, configure:
+- Cloud Builder base URL, e.g. `https://your-service.vercel.app`.
+- OIDC Issuer: the issuer URL used by your identity provider.
+- OIDC Client ID: register a **native/public client** (no client secret).
+- API Audience: the audience configured in `OIDC_AUDIENCE`.
+
+Register this exact native redirect URI with the identity provider:
+`com.storyforge.app:/oauth2redirect`
+
+Enable Authorization Code + PKCE (S256) and the `openid profile email` scopes. If the provider supports a custom `audience` authorization parameter, the app sends the configured API Audience value.
+
+The app can create a job and refresh its status. The artifact endpoint returns a short-lived HTTPS download redirect; the app obtains that URL with the bearer token, then hands only the signed URL (never the bearer token) to Android Download Manager.
+
+### Current upload limitation
+
+The Android app currently exports the `.storygame` package locally. To submit a cloud build, place that file at a direct HTTPS URL on a host listed in `STORYGAME_ALLOWED_HOSTS`, then paste the URL into the Build Center. Direct upload from the Android app to managed object storage is a separate follow-up; do not expose storage credentials in the APK.
+
+No credentials are committed in this directory. The service is still not deployed: configure the OIDC provider, PostgreSQL, GitHub App and Vercel environment before testing a real build.
