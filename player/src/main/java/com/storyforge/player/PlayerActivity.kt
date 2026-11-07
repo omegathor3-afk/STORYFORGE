@@ -173,7 +173,6 @@ class PlayerActivity : ComponentActivity() {
             mutableStateOf(restored.toMap())
         }
         var revealed by remember { mutableIntStateOf(0) }
-        var remainingSeconds by remember(sceneId) { mutableIntStateOf(scene?.choiceTimerSeconds ?: 0) }
         LaunchedEffect(game.projectId, sceneId, values) {
             val savedValues = JSONObject()
             values.forEach { (key,value) -> savedValues.put(key,value) }
@@ -184,6 +183,7 @@ class PlayerActivity : ComponentActivity() {
         var audioPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
         var audioPlaying by remember { mutableStateOf(false) }
         val scene = game.scenes.firstOrNull { it.id == sceneId }
+        var remainingSeconds by remember(sceneId) { mutableIntStateOf(scene?.choiceTimerSeconds ?: 0) }
         DisposableEffect(scene?.audio?.absolutePath) {
             onDispose {
                 audioPlayer?.let { runCatching { if (it.isPlaying) it.stop(); it.release() } }
