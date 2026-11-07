@@ -49,7 +49,7 @@ internal fun SceneDepthOverlay(effects: List<String>, theme: String, layer: Stri
             }
             if("moon_glow" in active || "distant_glow" in active) {
                 val c=Offset(w*0.78f,h*0.18f);val r=w*0.38f
-                drawCircle(Brush.radialGradient(listOf(Color(0x55C5D0B0).copy(alpha=(0.35f+0.2f*pulse)*strength),Color(0x1C9CA88F),Color.Transparent),center=c,radius=r),radius=r,center=c)
+                drawCircle(Brush.radialGradient(listOf(Color(0x55C5D0B0).copy(alpha=(0.35f+0.2f*pulse)*strength),Color(0x1C9CA88F).copy(alpha=0.11f*strength),Color.Transparent),center=c,radius=r),radius=r,center=c)
                 drawCircle(Color(0x99C5C9AE).copy(alpha=strength),radius=w*0.025f,center=c)
             }
             if("light_shafts" in active) for(i in 0..2) {
@@ -58,8 +58,8 @@ internal fun SceneDepthOverlay(effects: List<String>, theme: String, layer: Stri
                 drawPath(beam,Brush.verticalGradient(listOf(Color(0x1DC5CBA7).copy(alpha=strength),Color.Transparent),startY=0f,endY=h*0.68f))
             }
         } else {
-            if("ground_fog" in active || "fog" in active || "dense_fog" in active) {
-                val fogStrength=(if("dense_fog" in active) 0.19f else 0.11f)*strength
+            if("ground_fog" in active) {
+                val fogStrength=0.11f*strength
                 for(i in 0..5) {
                     val x=((drift*(if(i%2==0)1f else -0.72f)+i*0.21f)%1.5f-0.2f)*w
                     val y=h*(0.73f+(i%3)*0.065f);val r=w*(0.22f+(i%2)*0.09f)
