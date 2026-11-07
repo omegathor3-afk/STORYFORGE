@@ -39,7 +39,7 @@ private val Night = Color(0xFF05070B)
 private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
-private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?)
+private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int)
 private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?)
 
 class PlayerActivity : ComponentActivity() {
@@ -64,7 +64,7 @@ class PlayerActivity : ComponentActivity() {
                             entries++
                             require(entries <= 500) { "الحزمة تحتوي على ملفات كثيرة جدًا" }
                             val name = entry.name
-                            require(!name.startsWith("/") && !name.contains('\\\\') &&
+                            require(!name.startsWith("/") && !name.contains(92.toChar()) &&
                                 name.split('/').none { it == ".." || it == "." || it.isBlank() }) { "مسار غير آمن داخل الحزمة" }
                             require(seen.add(name)) { "الحزمة تحتوي على ملف مكرر" }
                             if (entry.isDirectory) { zip.closeEntry(); continue }
@@ -126,7 +126,7 @@ class PlayerActivity : ComponentActivity() {
                     val sceneId = s.optString("id")
                     val image = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("image/") }?.let { File(root,it.path) }
                     val audio = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("audio/") }?.let { File(root,it.path) }
-                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio)
+                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0))
                 }
                 val vars = linkedMapOf<String,Int>()
                 val varsJson = p.optJSONArray("variables")
@@ -173,6 +173,7 @@ class PlayerActivity : ComponentActivity() {
             mutableStateOf(restored.toMap())
         }
         var revealed by remember { mutableIntStateOf(0) }
+        var remainingSeconds by remember(sceneId) { mutableIntStateOf(scene?.choiceTimerSeconds ?: 0) }
         LaunchedEffect(game.projectId, sceneId, values) {
             val savedValues = JSONObject()
             values.forEach { (key,value) -> savedValues.put(key,value) }
@@ -191,6 +192,16 @@ class PlayerActivity : ComponentActivity() {
             }
         }
         val ended = scene == null || sceneId == "__END__"
+        LaunchedEffect(scene?.id, revealed) {
+            val current = scene ?: return@LaunchedEffect
+            if (current.choiceTimerSeconds <= 0 || revealed < current.text.length) return@LaunchedEffect
+            val available = current.choices.filter { it.text.isNotBlank() && condition(it.condition) }
+            if (available.isEmpty()) return@LaunchedEffect
+            remainingSeconds = current.choiceTimerSeconds
+            while (remainingSeconds > 0) { delay(1000); remainingSeconds-- }
+            val timedChoice = available.getOrNull(current.timeoutChoiceIndex.coerceIn(0, available.lastIndex))
+            if (timedChoice != null && sceneId == current.id) choose(timedChoice)
+        }
         LaunchedEffect(scene?.id) {
             revealed = 0
             val size = scene?.text?.length ?: 0
@@ -274,6 +285,7 @@ class PlayerActivity : ComponentActivity() {
                     Spacer(Modifier.height(18.dp))
                     if(revealed>=scene.text.length) {
                         val available=scene.choices.filter { it.text.isNotBlank() && condition(it.condition) }
+                        if (scene.choiceTimerSeconds > 0 && available.isNotEmpty()) Text("سيتم اختيار القرار تلقائيًا خلال $remainingSeconds ثانية", color=Gold, fontSize=12.sp)
                         if(available.isEmpty()) {
                             Button(onClick={sceneId=game.scenes.getOrNull(game.scenes.indexOf(scene)+1)?.id ?: "__END__"},modifier=Modifier.fillMaxWidth()) { Text("متابعة") }
                         } else available.forEach { choice ->

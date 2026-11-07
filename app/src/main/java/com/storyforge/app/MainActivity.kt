@@ -52,7 +52,9 @@ data class StoryScene(
     val choiceTargets: List<String?> = emptyList(),
     val choiceConditions: List<String> = emptyList(),
     val choiceEffects: List<String> = emptyList(),
-    val dialogues: List<DialogueLine> = emptyList()
+    val dialogues: List<DialogueLine> = emptyList(),
+    val choiceTimerSeconds: Int = 0,
+    val timeoutChoiceIndex: Int = 0
 )
 
 data class DialogueLine(
@@ -529,6 +531,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                         FieldLabel("اختيارات اللاعب")
+                                        OutlinedTextField(scene.choiceTimerSeconds.toString(), { value ->
+                                            val seconds = value.toIntOrNull()?.coerceIn(0, 300) ?: if (value.isBlank()) 0 else scene.choiceTimerSeconds
+                                            updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { s -> if (s.id == scene.id) s.copy(choiceTimerSeconds = seconds) else s }) }
+                                        }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("مؤقت القرار بالثواني (0 = بدون مؤقت)") })
+                                        if (scene.choiceTimerSeconds > 0) OutlinedTextField(scene.timeoutChoiceIndex.toString(), { value ->
+                                            val indexValue = value.toIntOrNull()?.coerceIn(0, (scene.choices.size - 1).coerceAtLeast(0)) ?: scene.timeoutChoiceIndex
+                                            updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { s -> if (s.id == scene.id) s.copy(timeoutChoiceIndex = indexValue) else s }) }
+                                        }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("رقم الاختيار التلقائي عند انتهاء الوقت (يبدأ من 0)") })
                                         scene.choices.forEachIndexed { index, choice ->
                                             OutlinedTextField(choice, { value ->
                                                 updateProject(current.id) { p ->
@@ -1227,6 +1237,8 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             val conditions = JSONArray(); scene.choiceConditions.forEach { conditions.put(it) }
             val effects = JSONArray(); scene.choiceEffects.forEach { effects.put(it) }
             s.put("choiceConditions", conditions); s.put("choiceEffects", effects)
+            s.put("choiceTimerSeconds", scene.choiceTimerSeconds.coerceIn(0, 300))
+            s.put("timeoutChoiceIndex", scene.timeoutChoiceIndex.coerceAtLeast(0))
             val dialogues = JSONArray()
             scene.dialogues.forEach { line ->
                 dialogues.put(JSONObject().put("id", line.id).put("speaker", line.speaker).put("text", line.text))
@@ -1273,6 +1285,8 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 choiceEffects = s.optJSONArray("choiceEffects")?.let { values ->
                     (0 until values.length()).map { k -> values.optString(k) }
                 } ?: emptyList(),
+                choiceTimerSeconds = s.optInt("choiceTimerSeconds", 0).coerceIn(0, 300),
+                timeoutChoiceIndex = s.optInt("timeoutChoiceIndex", 0).coerceAtLeast(0),
                 dialogues = s.optJSONArray("dialogues")?.let { values ->
                     (0 until values.length()).map { k ->
                         val d = values.getJSONObject(k)
