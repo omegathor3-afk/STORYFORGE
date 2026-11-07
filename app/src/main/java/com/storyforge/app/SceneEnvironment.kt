@@ -1,5 +1,12 @@
 package com.storyforge.app
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -13,6 +20,8 @@ import kotlin.math.sin
 
 @Composable
 internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "environment-motion")
+    val motion by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(6200, easing = LinearEasing), RepeatMode.Restart), label = "prop-motion")
     Canvas(modifier.fillMaxSize()) {
         props.filter { it.foreground == foreground }.forEachIndexed { index, prop ->
             val x = size.width * prop.x.coerceIn(0f, 1f)
@@ -25,7 +34,8 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                     for (b in 0..3) {
                         val by = y - unit * (0.45f + b * 0.38f)
                         val dir = if (b % 2 == 0) -1f else 1f
-                        drawLine(dark, Offset(x, by), Offset(x + dir * unit * (0.65f + b * 0.12f), by - unit * 0.55f), unit * 0.09f, cap = StrokeCap.Round)
+                        val sway = sin(motion * 2f * Math.PI.toFloat() + index * 0.7f + b) * unit * 0.07f
+                        drawLine(dark, Offset(x, by), Offset(x + dir * unit * (0.65f + b * 0.12f) + sway, by - unit * 0.55f), unit * 0.09f, cap = StrokeCap.Round)
                     }
                     drawLine(dark, Offset(x - unit * 0.1f, y + unit * 1.35f), Offset(x - unit * 0.72f, y + unit * 1.7f), unit * 0.11f)
                 }
@@ -60,7 +70,7 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                 }
                 "hanging_roots" -> for (i in 0..4) {
                     val xx=x-unit*0.55f+i*unit*0.28f
-                    val path=Path().apply { moveTo(xx,y-unit); cubicTo(xx-unit*0.12f,y-unit*0.3f,xx+unit*0.18f,y+unit*0.1f,xx+sin(index+i.toFloat())*unit*0.08f,y+unit*0.7f) }
+                    val path=Path().apply { moveTo(xx,y-unit); cubicTo(xx-unit*0.12f,y-unit*0.3f,xx+unit*0.18f,y+unit*0.1f,xx+sin(motion * 2f * Math.PI.toFloat()+index+i.toFloat())*unit*0.12f,y+unit*0.7f) }
                     drawPath(path,Color(0xFF353D2E),style=Stroke(width=unit*0.07f,cap=StrokeCap.Round))
                 }
                 "shrine" -> {
