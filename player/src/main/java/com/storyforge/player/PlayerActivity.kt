@@ -103,7 +103,8 @@ class PlayerActivity : ComponentActivity() {
         return Game(project.optString("id", manifest.optString("projectId")), project.optString("title", manifest.optString("title")), project.optString("description"), scenes, variables, cover)
     }
 
-    @Composable private fun PlayerScreen() {\n        var game by remember { mutableStateOf(runCatching { loadBundledGame() }.getOrNull()) }
+    @Composable private fun PlayerScreen() {
+        var game by remember { mutableStateOf(runCatching { loadBundledGame() }.getOrNull()) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) runCatching {
