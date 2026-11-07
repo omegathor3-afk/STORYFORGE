@@ -77,7 +77,7 @@ jobs:
             -keystore "$KEYSTORE_PATH" \
             -storetype JKS \
             -storepass "ci-store-password" \
-            -keypass "ci-key-password" \
+            -keypass "ci-store-password" \
             -alias "storyforge-ci" \
             -dname "CN=STORYFORGE CI" \
             -validity 2 -keyalg RSA -keysize 2048
