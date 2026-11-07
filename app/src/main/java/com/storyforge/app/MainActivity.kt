@@ -678,7 +678,7 @@ private fun loadProjects(prefs: android.content.SharedPreferences): List<StoryPr
     runCatching { decodeProjects(prefs.getString("projects_json", "[]") ?: "[]") }.getOrDefault(emptyList())
 
 
-private fun evaluateStoryCondition(expression: String, values: Map<String, Int>): Boolean {
+internal fun evaluateStoryCondition(expression: String, values: Map<String, Int>): Boolean {
     if (expression.isBlank()) return true
     val match = Regex("^([\\p{L}A-Za-z0-9_]+)\\s*(>=|<=|==|!=|>|<)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return false
     val actual = values[match.groupValues[1]] ?: 0
@@ -694,7 +694,7 @@ private fun evaluateStoryCondition(expression: String, values: Map<String, Int>)
     }
 }
 
-private fun applyStoryEffect(expression: String, values: Map<String, Int>): Map<String, Int> {
+internal fun applyStoryEffect(expression: String, values: Map<String, Int>): Map<String, Int> {
     if (expression.isBlank()) return values
     val match = Regex("^([\\p{L}A-Za-z0-9_]+)\\s*(=|\\+=|-=)\\s*(-?\\d+)$").matchEntire(expression.trim()) ?: return values
     val name = match.groupValues[1]
