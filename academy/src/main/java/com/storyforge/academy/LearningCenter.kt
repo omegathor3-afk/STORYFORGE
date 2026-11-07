@@ -139,11 +139,18 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
                         enabled = quizAnswer >= 0,
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("تحقق من الإجابة") }
-                    Button(onClick = {
-                        if (!completed.contains(selected)) completed.add(selected)
-                        prefs.edit().putStringSet("completed_lessons", completed.map { it.toString() }.toSet()).apply()
-                        if (selected < guideLessons.lastIndex) selected++ else selected = -1
-                    }, modifier = Modifier.fillMaxWidth()) {
+                    if (!completed.contains(selected) && !(quizChecked && quizAnswer == quiz.correct)) {
+                        Text("أجب عن سؤال الدرس إجابة صحيحة لفتح زر إكمال الدرس.", color = Color(0xFF9BA4AE), fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = {
+                            if (!completed.contains(selected)) completed.add(selected)
+                            prefs.edit().putStringSet("completed_lessons", completed.map { it.toString() }.toSet()).apply()
+                            if (selected < guideLessons.lastIndex) selected++ else selected = -1
+                        },
+                        enabled = completed.contains(selected) || (quizChecked && quizAnswer == quiz.correct),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(if (completed.contains(selected)) "تم الدرس — التالي" else "أنهيت الدرس، التالي")
                     }
                     if (onOpenStudio != null) OutlinedButton(onClick = onOpenStudio, modifier = Modifier.fillMaxWidth()) { Text("افتح الاستوديو وطبّق الآن") }
