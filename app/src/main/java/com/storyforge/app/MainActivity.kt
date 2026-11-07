@@ -110,6 +110,8 @@ class MainActivity : ComponentActivity() {
             var previewIndex by remember { mutableIntStateOf(0) }
             var previewSceneId by remember { mutableStateOf<String?>(null) }
             var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+            var showImmersivePlayer by remember { mutableStateOf(false) }
+            var showBrandIntro by remember { mutableStateOf(true) }
             fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {
                 if (recordHistory && projects != next) {
                     undoStack.add(projects.toList())
@@ -219,6 +221,9 @@ class MainActivity : ComponentActivity() {
                 background = Ink, surface = Panel, onBackground = Color.White,
                 onSurface = Color(0xFFE8E4DC)
             )) {
+                if (showBrandIntro) androidx.compose.ui.window.Dialog(onDismissRequest = {}, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+                    StoryForgeIntro(onFinished = { showBrandIntro = false })
+                }
                 Scaffold(
                     containerColor = Ink,
                     bottomBar = {
@@ -683,6 +688,10 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     Text("معاينة تفاعلية", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                     Text(current.title, color = Muted)
+                                    Button(onClick = { showImmersivePlayer = true }, modifier = Modifier.fillMaxWidth()) { Text("✦ ابدأ التجربة السينمائية الغامرة") }
+                                    if (showImmersivePlayer) androidx.compose.ui.window.Dialog(onDismissRequest = { showImmersivePlayer = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+                                        ImmersiveStoryPlayer(project = current, filesDir = filesDir, onExit = { showImmersivePlayer = false })
+                                    }
                                     if (previewSceneId == null || (previewSceneId != "__END__" && current.scenes.none { it.id == previewSceneId })) {
                                         previewSceneId = current.scenes.first().id
                                         previewIndex = 0
