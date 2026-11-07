@@ -48,7 +48,7 @@ class PlayerActivity : ComponentActivity() {
 
     @Composable private fun PlayerScreen() {
         var game by remember { mutableStateOf<Game?>(null) }
-        var error by remember { mutableStateOf<String?>(null) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
         val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) runCatching {
                 val root = File(filesDir, "installed_game").apply { deleteRecursively(); mkdirs() }
@@ -110,8 +110,8 @@ class PlayerActivity : ComponentActivity() {
                     }
                 }
                 game = Game(p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover)
-                error = null
-            }.onFailure { error = it.message ?: "تعذر فتح اللعبة" }
+                errorMessage = null
+            }.onFailure { errorMessage = it.message ?: "تعذر فتح اللعبة" }
         }
         MaterialTheme(colorScheme = darkColorScheme(primary=Gold,background=Night,surface=Color(0xFF151A23))) {
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101B2A),Night)))) {
@@ -123,7 +123,7 @@ class PlayerActivity : ComponentActivity() {
                         Spacer(Modifier.height(26.dp))
                         Button(onClick={picker.launch(arrayOf("application/zip","application/octet-stream"))},modifier=Modifier.fillMaxWidth()) { Text("استيراد لعبة .storygame") }
                         Text("اختر حزمة لعبة صدّرتها من STORYFORGE.",color=Color.Gray,fontSize=12.sp,textAlign=TextAlign.Center)
-                        error?.let { Text(it,color=Color(0xFFFF8888),modifier=Modifier.padding(top=16.dp)) }
+                        errorMessage?.let { Text(it,color=Color(0xFFFF8888),modifier=Modifier.padding(top=16.dp)) }
                     }
                 } else GameExperience(game!!)
             }
