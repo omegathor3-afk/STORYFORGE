@@ -132,9 +132,9 @@ jobs:
           test -n "$AAPT"
           test -n "$APKSIGNER"
           BADGING="$("$AAPT" dump badging "$APK")"
-          printf '%s\\n' "$BADGING" | grep -F "package: name='$APPLICATION_ID'"
-          printf '%s\\n' "$BADGING" | grep -F "application-label:'$GAME_TITLE'"
-          printf '%s\\n' "$BADGING" | grep -F "versionName='$GAME_VERSION_NAME'"
+          printf '%s\n' "$BADGING" | grep -F "package: name='$APPLICATION_ID'"
+          printf '%s\n' "$BADGING" | grep -F "application-label:'$GAME_TITLE'"
+          printf '%s\n' "$BADGING" | grep -F "versionName='$GAME_VERSION_NAME'"
           unzip -Z1 "$APK" | grep -Fx 'assets/default.storygame'
           "$APKSIGNER" verify --verbose "$APK"
           if [[ "${{ inputs.build_type }}" == "release" ]]; then
