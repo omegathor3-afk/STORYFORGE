@@ -15,6 +15,10 @@ on:
         description: Unique Android package ID (for example com.studio.mygame)
         required: true
         type: string
+      icon_url:
+        description: Optional HTTPS link to a square PNG app icon
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -49,6 +53,7 @@ jobs:
         env:
           STORYGAME_URL: ${{ inputs.storygame_url }}
           GAME_TITLE: ${{ inputs.game_title }}
+          ICON_URL: ${{ inputs.icon_url }}
         run: python3 scripts/prepare_standalone_game.py
 
       - name: Setup Java 17

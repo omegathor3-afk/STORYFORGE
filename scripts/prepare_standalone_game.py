@@ -5,6 +5,7 @@ import os
 import pathlib
 import re
 import sys
+import struct
 import urllib.request
 import zipfile
 
@@ -68,5 +69,21 @@ with zipfile.ZipFile(tmp) as archive:
             if not (item.filename.startswith("assets/storyforge_assets/") or item.filename.startswith("storyforge_assets/")):
                 raise SystemExit("Unsupported file in story package")
             result.writestr(item.filename, archive.read(item.filename))
+icon_url = os.environ.get("ICON_URL", "").strip()
+if icon_url:
+    if not icon_url.startswith("https://") or len(icon_url) > 2048:
+        raise SystemExit("icon_url must be an HTTPS URL")
+    icon_request = urllib.request.Request(icon_url, headers={"User-Agent": "STORYFORGE-APK-Builder/1.0"})
+    with urllib.request.urlopen(icon_request, timeout=30) as response:
+        icon = response.read(3 * 1024 * 1024 + 1)
+    if len(icon) > 3 * 1024 * 1024 or not icon.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10])):
+        raise SystemExit("App icon must be a PNG file smaller than 3 MB")
+    width, height = struct.unpack(">II", icon[16:24])
+    if width < 96 or height < 96 or width > 4096 or height > 4096:
+        raise SystemExit("App icon dimensions must be between 96 and 4096 pixels")
+    icon_path = pathlib.Path("player/src/main/res/drawable-nodpi/game_icon.png")
+    icon_path.parent.mkdir(parents=True, exist_ok=True)
+    icon_path.write_bytes(icon)
+
 tmp.unlink(missing_ok=True)
 print("Validated and embedded standalone story package.")
