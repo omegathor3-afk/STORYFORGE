@@ -5,7 +5,7 @@ on:
     inputs:
       storygame_url:
         description: HTTPS download link to one exported .storygame ZIP
-        required: false
+        required: true
         type: string
       game_title:
         description: Name shown under the installed app icon
