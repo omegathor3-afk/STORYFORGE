@@ -241,11 +241,11 @@ class MainActivity : ComponentActivity() {
                     containerColor = Ink,
                     bottomBar = {
                         NavigationBar(containerColor = Panel, contentColor = Gold) {
-                            listOf("المكتبة", "الاستوديو", "المعاينة").forEachIndexed { i, label ->
+                            listOf("المكتبة", "الاستوديو", "المعاينة", "التعلّم").forEachIndexed { i, label ->
                                 NavigationBarItem(
                                     selected = page == i,
                                     onClick = { page = i },
-                                    icon = { Text(listOf("▤", "✎", "▷")[i], fontSize = 20.sp) },
+                                    icon = { Text(listOf("▤", "✎", "▷", "؟")[i], fontSize = 20.sp) },
                                     label = { Text(label) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Gold, selectedTextColor = Gold,
@@ -700,7 +700,7 @@ class MainActivity : ComponentActivity() {
                                     Text("يتم الحفظ تلقائيًا على جهازك عند كل تعديل.", color = Color(0xFF8CBAA5), fontSize = 12.sp)
                                 }
                             }
-                            else -> {
+                            2 -> {
                                 if (current == null) {
                                     EmptyPanel("لا توجد قصة للمعاينة", "اختر مشروعًا من المكتبة أولًا.")
                                     OutlinedButton(onClick = { page = 0 }) { Text("فتح المكتبة") }
@@ -807,6 +807,9 @@ class MainActivity : ComponentActivity() {
                                     }, modifier = Modifier.fillMaxWidth()) { Text("إعادة من البداية") }
                                     Text("كل اختيار يمكن توجيهه إلى مشهد مستقل أو إنهاء القصة. الوجهة التلقائية تتابع للمشهد التالي.", color = Muted, fontSize = 12.sp)
                                 }
+                            }
+                            else -> {
+                                LearningCenter(onOpenStudio = { page = 1 })
                             }
                         }
                     }
