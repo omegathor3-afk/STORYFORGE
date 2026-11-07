@@ -67,7 +67,8 @@ data class StoryScene(
     val choiceEffects: List<String> = emptyList(),
     val dialogues: List<DialogueLine> = emptyList(),
     val choiceTimerSeconds: Int = 0,
-    val timeoutChoiceIndex: Int = 0
+    val timeoutChoiceIndex: Int = 0,
+    val atmosphereEffects: List<String> = emptyList()
 )
 
 data class DialogueLine(
@@ -96,7 +97,9 @@ data class StoryProject(
     val scenes: List<StoryScene> = listOf(StoryScene()),
     val characters: List<String> = emptyList(),
     val variables: List<StoryVariable> = emptyList(),
-    val assets: List<StoryAsset> = emptyList()
+    val assets: List<StoryAsset> = emptyList(),
+    val visualTheme: String = "darkwood",
+    val showSceneNumbers: Boolean = true
 )
 
 class MainActivity : ComponentActivity() {
@@ -432,6 +435,29 @@ class MainActivity : ComponentActivity() {
                                     var description by remember(current.id, current.description) { mutableStateOf(current.description) }
                                     OutlinedTextField(description, { description = it; updateProject(current.id) { p -> p.copy(description = it) } },
                                         modifier = Modifier.fillMaxWidth(), minLines = 2)
+                                    FieldLabel("هوية العالم البصرية")
+                                    var themeMenu by remember(current.id) { mutableStateOf(false) }
+                                    val themeNames = listOf("darkwood" to "غابة Darkwood الميتة", "ashen" to "رماد ما بعد الكارثة", "haunted" to "غابة مسكونة", "fungal" to "غابة الفطريات", "bloodmoon" to "ليلة القمر الدموي", "frozen" to "غابة متجمدة")
+                                    Box {
+                                        OutlinedButton(onClick = { themeMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                                            Text(themeNames.firstOrNull { it.first == current.visualTheme }?.second ?: "غابة Darkwood الميتة")
+                                        }
+                                        DropdownMenu(expanded = themeMenu, onDismissRequest = { themeMenu = false }) {
+                                            themeNames.forEach { (id, name) -> DropdownMenuItem(text = { Text(name) }, onClick = {
+                                                updateProject(current.id) { p -> p.copy(visualTheme = id) }; themeMenu = false
+                                            }) }
+                                        }
+                                    }
+                                    Text("الثيم يحدد طبقات الجو والخلفية العامة، ويمكن تخصيص مؤثرات مستقلة لكل مشهد.", color = Muted, fontSize = 11.sp)
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text("إظهار أرقام المشاهد للاعب", fontWeight = FontWeight.SemiBold)
+                                            Text("أوقفه لإخفاء رقم المشهد ومؤشر التقدم الرقمي أثناء اللعب.", color = Muted, fontSize = 11.sp)
+                                        }
+                                        Switch(checked = current.showSceneNumbers, onCheckedChange = { enabled ->
+                                            updateProject(current.id) { p -> p.copy(showSceneNumbers = enabled) }
+                                        })
+                                    }
                                     Divider(color = Color(0xFF343B43))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically) {
@@ -555,6 +581,23 @@ class MainActivity : ComponentActivity() {
                                             updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { if (it.id == scene.id) it.copy(text = value) else it }) }
                                         }, modifier = Modifier.fillMaxWidth(), minLines = 6,
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
+                                        FieldLabel("مؤثرات الجو لهذا المشهد")
+                                        Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
+                                        val effectOptions = listOf("rain" to "🌧 مطر", "heavy_rain" to "⛈ مطر غزير", "fog" to "🌫 ضباب", "dense_fog" to "ضباب كثيف", "ash" to "رماد متساقط", "dust" to "غبار", "fireflies" to "يراعات", "spores" to "أبواغ فطرية", "embers" to "جمر متطاير", "snow" to "ثلج", "black_shadows" to "ظلال عابرة", "blood_mist" to "ضباب دموي", "wind" to "رياح", "dead_leaves" to "أوراق ميتة", "branches" to "ظلال أغصان مكسورة")
+                                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                            effectOptions.chunked(2).forEach { rowOptions ->
+                                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                                    rowOptions.forEach { (effectId, label) ->
+                                                        FilterChip(selected = effectId in scene.atmosphereEffects, onClick = {
+                                                            updateProject(current.id) { p -> p.copy(scenes = p.scenes.map { item ->
+                                                                if (item.id == scene.id) item.copy(atmosphereEffects = if (effectId in item.atmosphereEffects) item.atmosphereEffects - effectId else item.atmosphereEffects + effectId) else item
+                                                            }) }
+                                                        }, label = { Text(label, fontSize = 11.sp) }, modifier = Modifier.weight(1f))
+                                                    }
+                                                    if (rowOptions.size == 1) Spacer(Modifier.weight(1f))
+                                                }
+                                            }
+                                        }
                                         Divider(color = Color(0xFF343B43))
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically) {
@@ -1513,6 +1556,8 @@ private fun encodeProjects(projects: List<StoryProject>): String {
             s.put("choiceConditions", conditions); s.put("choiceEffects", effects)
             s.put("choiceTimerSeconds", scene.choiceTimerSeconds.coerceIn(0, 300))
             s.put("timeoutChoiceIndex", scene.timeoutChoiceIndex.coerceAtLeast(0))
+            val atmosphere = JSONArray(); scene.atmosphereEffects.forEach { atmosphere.put(it) }
+            s.put("atmosphereEffects", atmosphere)
             val dialogues = JSONArray()
             scene.dialogues.forEach { line ->
                 dialogues.put(JSONObject().put("id", line.id).put("speaker", line.speaker).put("text", line.text))
@@ -1532,7 +1577,8 @@ private fun encodeProjects(projects: List<StoryProject>): String {
                 .put("sceneId", asset.sceneId ?: JSONObject.NULL))
         }
         p.put("scenes", scenes); p.put("characters", characters); p.put("variables", variables)
-        p.put("assets", assets); array.put(p)
+        p.put("assets", assets); p.put("visualTheme", project.visualTheme)
+        p.put("showSceneNumbers", project.showSceneNumbers); array.put(p)
     }
     return array.toString(2)
 }
@@ -1561,6 +1607,7 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 } ?: emptyList(),
                 choiceTimerSeconds = s.optInt("choiceTimerSeconds", 0).coerceIn(0, 300),
                 timeoutChoiceIndex = s.optInt("timeoutChoiceIndex", 0).coerceAtLeast(0),
+                atmosphereEffects = s.optJSONArray("atmosphereEffects")?.let { values -> (0 until values.length()).map { k -> values.optString(k) } } ?: emptyList(),
                 dialogues = s.optJSONArray("dialogues")?.let { values ->
                     (0 until values.length()).map { k ->
                         val d = values.getJSONObject(k)
@@ -1585,6 +1632,8 @@ private fun decodeProjects(json: String): List<StoryProject> {
                 val v = variablesJson.getJSONObject(k)
                 StoryVariable(v.optString("name"), v.optInt("initialValue", 0))
             },
+            visualTheme = p.optString("visualTheme", "darkwood"),
+            showSceneNumbers = p.optBoolean("showSceneNumbers", true),
             assets = p.optJSONArray("assets")?.let { values ->
                 (0 until values.length()).map { k ->
                     val a = values.getJSONObject(k)

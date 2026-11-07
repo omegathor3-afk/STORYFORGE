@@ -113,6 +113,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
             } else Box(Modifier.fillMaxWidth().height(300.dp).background(
                 Brush.radialGradient(listOf(Color(0xFF24394D), Color(0xFF101723), PlayerNight))))
 
+            AtmosphereOverlay(effects = scene?.atmosphereEffects.orEmpty(), theme = project.visualTheme, modifier = Modifier.fillMaxSize())
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 17.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -124,11 +125,11 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                     }
                 }
                 if (!ended && scene != null) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    if (project.showSceneNumbers) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("المشهد " + (project.scenes.indexOf(scene) + 1) + " / " + project.scenes.size, color = Color.LightGray, fontSize = 11.sp)
                         Text("◆ " + history.size + " خطوة", color = PlayerBlue, fontSize = 11.sp)
                     }
-                    LinearProgressIndicator(
+                    if (project.showSceneNumbers) LinearProgressIndicator(
                         progress = { (project.scenes.indexOf(scene) + 1).toFloat() / project.scenes.size.coerceAtLeast(1) },
                         modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(8.dp)),
                         color = PlayerGold, trackColor = Color.White.copy(alpha = 0.14f))

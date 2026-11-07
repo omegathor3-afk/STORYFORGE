@@ -40,8 +40,8 @@ private val Night = Color(0xFF05070B)
 private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
-private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int)
-private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?)
+private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?,val choiceTimerSeconds:Int,val timeoutChoiceIndex:Int,val atmosphereEffects:List<String>)
+private data class Game(val projectId:String,val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?,val visualTheme:String,val showSceneNumbers:Boolean)
 
 class PlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,12 +95,12 @@ class PlayerActivity : ComponentActivity() {
             val id = s.optString("id")
             val image = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("image/") }?.let { File(root, it.path) }
             val audio = assetFiles.firstOrNull { it.sceneId == id && it.mime.startsWith("audio/") }?.let { File(root, it.path) }
-            Scene(id, s.optString("title"), s.optString("text"), choices, lines, image, audio, s.optInt("choiceTimerSeconds", 0).coerceIn(0,300), s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0))
+            Scene(id, s.optString("title"), s.optString("text"), choices, lines, image, audio, s.optInt("choiceTimerSeconds", 0).coerceIn(0,300), s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0), s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList())
         }
         val variables = linkedMapOf<String, Int>(); val vars = project.optJSONArray("variables")
         for (i in 0 until (vars?.length() ?: 0)) { val v = vars!!.getJSONObject(i); variables[v.optString("name")] = v.optInt("initialValue") }
         val cover = assetFiles.firstOrNull { it.mime.startsWith("image/") && it.sceneId == null }?.let { File(root,it.path) } ?: assetFiles.firstOrNull { it.mime.startsWith("image/") }?.let { File(root,it.path) }
-        return Game(project.optString("id", manifest.optString("projectId")), project.optString("title", manifest.optString("title")), project.optString("description"), scenes, variables, cover)
+        return Game(project.optString("id", manifest.optString("projectId")), project.optString("title", manifest.optString("title")), project.optString("description"), scenes, variables, cover, project.optString("visualTheme", "darkwood"), project.optBoolean("showSceneNumbers", true))
     }
 
     @Composable private fun PlayerScreen() {
@@ -181,7 +181,7 @@ class PlayerActivity : ComponentActivity() {
                     val sceneId = s.optString("id")
                     val image = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("image/") }?.let { File(root,it.path) }
                     val audio = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("audio/") }?.let { File(root,it.path) }
-                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0))
+                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio,s.optInt("choiceTimerSeconds",0).coerceIn(0,300),s.optInt("timeoutChoiceIndex",0).coerceAtLeast(0),s.optJSONArray("atmosphereEffects")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } } ?: emptyList())
                 }
                 val vars = linkedMapOf<String,Int>()
                 val varsJson = p.optJSONArray("variables")
@@ -190,7 +190,7 @@ class PlayerActivity : ComponentActivity() {
                 }
                 val cover = assetFiles.firstOrNull { it.mime.startsWith("image/") && it.sceneId == null }?.let { File(root,it.path) }
                     ?: assetFiles.firstOrNull { it.mime.startsWith("image/") }?.let { File(root,it.path) }
-                game = Game(p.optString("id",manifest.optString("projectId")),p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover)
+                game = Game(p.optString("id",manifest.optString("projectId")),p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover,p.optString("visualTheme","darkwood"),p.optBoolean("showSceneNumbers",true))
                 errorMessage = null
             }.onFailure { errorMessage = it.message ?: "تعذر فتح اللعبة" }
         }
@@ -302,7 +302,11 @@ class PlayerActivity : ComponentActivity() {
                 Button(onClick={sceneId=game.scenes.firstOrNull()?.id;values=game.variables;progressPrefs.edit().remove(game.projectId).apply()},modifier=Modifier.fillMaxWidth()) { Text("إعادة اللعب من البداية") }
                 Spacer(Modifier.weight(1f))
             } else {
-                LinearProgressIndicator(progress={ (game.scenes.indexOf(scene!!)+1).toFloat()/game.scenes.size.coerceAtLeast(1) },modifier=Modifier.fillMaxWidth())
+                if (game.showSceneNumbers) {
+                    Text("المشهد " + (game.scenes.indexOf(scene!!) + 1) + " / " + game.scenes.size, color = Gold, fontSize = 11.sp)
+                    LinearProgressIndicator(progress={ (game.scenes.indexOf(scene!!)+1).toFloat()/game.scenes.size.coerceAtLeast(1) },modifier=Modifier.fillMaxWidth())
+                }
+                AtmosphereOverlay(effects = scene!!.atmosphereEffects, theme = game.visualTheme, modifier = Modifier.fillMaxSize())
                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.Bottom) {
                     scene.image?.let { file ->
                         val bitmap=remember(file.absolutePath){BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()}
