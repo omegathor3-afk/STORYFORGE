@@ -40,13 +40,33 @@ jobs:
       - name: Build with Gradle
         run: gradle --no-daemon :app:assembleDebug :player:assembleDebug :academy:assembleDebug
 
-      - name: Verify standalone APK configuration
+      - name: Preserve generic Player APK
+        run: cp player/build/outputs/apk/debug/player-debug.apk player/build/outputs/apk/debug/player-generic-debug.apk
+
+      - name: Create standalone story fixture
+        run: python3 scripts/create_ci_storygame_fixture.py
+
+      - name: Embed standalone story fixture
+        env:
+          STORYGAME_LOCAL_PATH: .ci-fixture.storygame
+          GAME_TITLE: CI Story Game
+          APPLICATION_ID: com.storyforge.games.ci
+          GAME_VERSION_NAME: 1.2.3
+          GAME_VERSION_CODE: "2"
+        run: python3 scripts/prepare_standalone_game.py
+
+      - name: Build and verify standalone APK configuration
         run: |
           gradle --no-daemon :player:assembleDebug \
-            -PgameApplicationId=com.storyforge.games.ci \
-            -PgameDisplayName="CI Story Game" \
-            -PgameVersionName=1.2.3 \
-            -PgameVersionCode=2
+            -PgameApplicationId="$APPLICATION_ID" \
+            -PgameDisplayName="$GAME_TITLE" \
+            -PgameVersionName="$GAME_VERSION_NAME" \
+            -PgameVersionCode="$GAME_VERSION_CODE"
+          cp player/build/outputs/apk/debug/player-debug.apk player/build/outputs/apk/debug/player-standalone-ci.apk
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -n 1)"
+          "$AAPT" dump badging player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "package: name='com.storyforge.games.ci'"
+          "$AAPT" dump badging player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "application-label:'CI Story Game'"
+          unzip -l player/build/outputs/apk/debug/player-standalone-ci.apk | grep -F "assets/default.storygame"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

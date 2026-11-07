@@ -22,7 +22,8 @@ if local_package:
     local_path = pathlib.Path(local_package).resolve()
     if not local_path.is_file():
         raise SystemExit("STORYGAME_LOCAL_PATH must point to a local story package")
-    data = local_path.read_bytes()[:100 * 1024 * 1024 + 1]
+    with local_path.open("rb") as source:
+        data = source.read(100 * 1024 * 1024 + 1)
 else:
     parsed_url = urllib.parse.urlsplit(url)
     if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(url) > 2048:

@@ -36,6 +36,8 @@ class PrepareStandaloneGameTests(unittest.TestCase):
                 "ICON_URL": "", "GITHUB_ENV": str(env_file)
             }
             env.update(extra_env or {})
+            if env.get("STORYGAME_LOCAL_PATH"):
+                pathlib.Path(env["STORYGAME_LOCAL_PATH"]).write_bytes(package)
             old_cwd = pathlib.Path.cwd()
             try:
                 os.chdir(root)
@@ -72,6 +74,11 @@ class PrepareStandaloneGameTests(unittest.TestCase):
     def test_path_traversal_is_rejected(self):
         with self.assertRaises(SystemExit):
             self.run_script(make_package({"assets/storyforge_assets/../../outside.txt": b"no"}))
+
+    def test_local_fixture_is_supported_for_ci(self):
+        embedded_data, env_text = self.run_script(make_package(), {"STORYGAME_LOCAL_PATH": ".local-fixture.storygame", "STORYGAME_URL": ""})
+        self.assertIsNotNone(embedded_data)
+        self.assertIn("GAME_TITLE=Demo Story", env_text)
 
     def test_non_https_url_is_rejected(self):
         with self.assertRaises(SystemExit):
