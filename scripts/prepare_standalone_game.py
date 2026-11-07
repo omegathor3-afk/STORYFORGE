@@ -35,7 +35,7 @@ with zipfile.ZipFile(tmp) as archive:
     for item in infos:
         name = item.filename
         parts = pathlib.PurePosixPath(name).parts
-        if name.startswith("/") or "\\\\" in name or any(p in ("", ".", "..") for p in parts):
+        if name.startswith("/") or chr(92) in name or any(p in ("", ".", "..") for p in parts):
             raise SystemExit("Unsafe path in story package")
         if name in names:
             raise SystemExit("Duplicate path in story package")
