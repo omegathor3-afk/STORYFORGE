@@ -1,12 +1,12 @@
 name: Android CI
 
 concurrency:
-  group: storyforge-android-build
+  group: storyforge-android-build-${{ github.ref }}
   cancel-in-progress: true
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror ]
   workflow_dispatch:
 
 jobs:
