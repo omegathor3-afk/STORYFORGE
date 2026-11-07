@@ -12,20 +12,26 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-url = os.environ["STORYGAME_URL"].strip()
+url = os.environ.get("STORYGAME_URL", "").strip()
+local_package = os.environ.get("STORYGAME_LOCAL_PATH", "").strip()
 title = os.environ.get("GAME_TITLE", "").strip()
 application_id = os.environ.get("APPLICATION_ID", "").strip()
 version_name = os.environ.get("GAME_VERSION_NAME", "1.0.0").strip()
 version_code = os.environ.get("GAME_VERSION_CODE", "1").strip()
-parsed_url = urllib.parse.urlsplit(url)
-if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(url) > 2048:
-    raise SystemExit("storygame_url must be a valid HTTPS URL without embedded credentials")
-
-request = urllib.request.Request(url, headers={"User-Agent": "STORYFORGE-APK-Builder/1.0"})
-with urllib.request.urlopen(request, timeout=45) as response:
-    if response.status != 200 or urllib.parse.urlsplit(response.geturl()).scheme != "https":
-        raise SystemExit("Unable to download the story package securely")
-    data = response.read(100 * 1024 * 1024 + 1)
+if local_package:
+    local_path = pathlib.Path(local_package).resolve()
+    if not local_path.is_file():
+        raise SystemExit("STORYGAME_LOCAL_PATH must point to a local story package")
+    data = local_path.read_bytes()[:100 * 1024 * 1024 + 1]
+else:
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password or len(url) > 2048:
+        raise SystemExit("storygame_url must be a valid HTTPS URL without embedded credentials")
+    request = urllib.request.Request(url, headers={"User-Agent": "STORYFORGE-APK-Builder/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        if response.status != 200 or urllib.parse.urlsplit(response.geturl()).scheme != "https":
+            raise SystemExit("Unable to download the story package securely")
+        data = response.read(100 * 1024 * 1024 + 1)
 if len(data) > 100 * 1024 * 1024:
     raise SystemExit("Story package exceeds 100 MB")
 
