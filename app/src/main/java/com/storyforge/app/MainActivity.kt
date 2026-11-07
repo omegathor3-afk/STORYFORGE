@@ -2,8 +2,11 @@ package com.storyforge.app
 
 import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -79,6 +82,22 @@ class MainActivity : ComponentActivity() {
             var previewIndex by remember { mutableIntStateOf(0) }
             var previewSceneId by remember { mutableStateOf<String?>(null) }
             var previewValues by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+            val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+                if (uri != null) runCatching {
+                    contentResolver.openOutputStream(uri)?.use { it.write(encodeProjects(projects).toByteArray(Charsets.UTF_8)) }
+                    Toast.makeText(this@MainActivity, "تم تصدير نسخة STORYFORGE", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "تعذر تصدير النسخة", Toast.LENGTH_SHORT).show() }
+            }
+            val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null) runCatching {
+                    val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                        ?: error("Empty file")
+                    val restored = decodeProjects(json)
+                    require(restored.isNotEmpty()) { "No projects found" }
+                    persist(restored)
+                    Toast.makeText(this@MainActivity, "تم استيراد ${restored.size} مشروع", Toast.LENGTH_SHORT).show()
+                }.onFailure { Toast.makeText(this@MainActivity, "ملف JSON غير صالح أو تعذر قراءته", Toast.LENGTH_LONG).show() }
+            }
 
             fun persist(next: List<StoryProject>, recordHistory: Boolean = true) {
                 if (recordHistory && projects != next) {
@@ -181,10 +200,14 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                                OutlinedButton(onClick = {
+                                Button(onClick = { exportLauncher.launch("storyforge-backup.json") },
+                                    modifier = Modifier.fillMaxWidth()) { Text("تصدير نسخة احتياطية إلى ملف") }
+                                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*")) },
+                                    modifier = Modifier.fillMaxWidth()) { Text("استيراد نسخة JSON من ملف") }
+                                TextButton(onClick = {
                                     backupText = encodeProjects(projects)
                                     showBackup = true
-                                }, modifier = Modifier.fillMaxWidth()) { Text("نسخ احتياطي / استعادة JSON") }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("أدوات JSON اليدوية") }
                             }
                             1 -> {
                                 if (current == null) {
