@@ -20,7 +20,7 @@ jobs:
 
       - name: Validate standalone build script syntax
         run: |
-          python3 -m py_compile scripts/prepare_standalone_game.py scripts/test_prepare_standalone_game.py
+          python3 -m py_compile scripts/prepare_standalone_game.py scripts/test_prepare_standalone_game.py scripts/create_ci_storygame_fixture.py
           python3 -m unittest discover -s scripts -p "test_*.py" -v
 
       - name: Setup Java 17

@@ -37,7 +37,9 @@ class PrepareStandaloneGameTests(unittest.TestCase):
             }
             env.update(extra_env or {})
             if env.get("STORYGAME_LOCAL_PATH"):
-                pathlib.Path(env["STORYGAME_LOCAL_PATH"]).write_bytes(package)
+                local_fixture = root / env["STORYGAME_LOCAL_PATH"]
+                local_fixture.parent.mkdir(parents=True, exist_ok=True)
+                local_fixture.write_bytes(package)
             old_cwd = pathlib.Path.cwd()
             try:
                 os.chdir(root)
