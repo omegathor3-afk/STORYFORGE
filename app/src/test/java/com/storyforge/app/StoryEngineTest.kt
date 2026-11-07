@@ -4,8 +4,44 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.file.Files
 
 class StoryEngineTest {
+    @Test
+    fun zipBackupRestoresProjectAndMediaFiles() {
+        val root = Files.createTempDirectory("storyforge-test").toFile()
+        try {
+            val asset = File(root, "storyforge_assets/project-a/scene.png")
+            asset.parentFile?.mkdirs()
+            asset.writeBytes(byteArrayOf(1, 2, 3, 4))
+            val project = StoryProject(
+                id = "project-a",
+                title = "اختبار",
+                scenes = listOf(StoryScene(id = "scene-a", title = "المشهد")),
+                assets = listOf(
+                    StoryAsset(
+                        id = "asset-a",
+                        name = "صورة",
+                        relativePath = "storyforge_assets/project-a/scene.png",
+                        mimeType = "image/png",
+                        sceneId = "scene-a"
+                    )
+                )
+            )
+            val bytes = ByteArrayOutputStream()
+            writeStoryZipBackup(bytes, listOf(project), root)
+            val restored = restoreStoryZipBackup(ByteArrayInputStream(bytes.toByteArray()), root)
+            assertEquals("اختبار", restored.single().title)
+            assertEquals("scene-a", restored.single().assets.single().sceneId)
+            assertEquals(byteArrayOf(1, 2, 3, 4).toList(), asset.readBytes().toList())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun blankConditionAlwaysAllowsChoice() {
         assertTrue(evaluateStoryCondition("", mapOf("keys" to 0)))
