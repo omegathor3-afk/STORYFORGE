@@ -1,6 +1,8 @@
 package com.storyforge.player
 
 import android.graphics.BitmapFactory
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,7 +39,7 @@ private val Night = Color(0xFF05070B)
 private val Gold = Color(0xFFE0C58C)
 private val Blue = Color(0xFF91C8D7)
 private data class Choice(val text:String,val target:String?,val condition:String,val effect:String)
-private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>)
+private data class Scene(val id:String,val title:String,val text:String,val choices:List<Choice>,val speakerLines:List<Pair<String,String>>,val image:File?,val audio:File?)
 private data class Game(val title:String,val description:String,val scenes:List<Scene>,val variables:Map<String,Int>,val cover:File?)
 
 class PlayerActivity : ComponentActivity() {
@@ -54,16 +56,38 @@ class PlayerActivity : ComponentActivity() {
                 val root = File(filesDir, "installed_game").apply { deleteRecursively(); mkdirs() }
                 contentResolver.openInputStream(uri)?.use { raw ->
                     ZipInputStream(raw.buffered()).use { zip ->
+                        val seen = mutableSetOf<String>()
+                        var entries = 0
+                        var totalBytes = 0L
                         while (true) {
                             val entry = zip.nextEntry ?: break
-                            require(!entry.name.startsWith("/") && entry.name.split('/').none { it == ".." || it.isBlank() }) { "مسار غير آمن داخل الحزمة" }
-                            if (entry.isDirectory) continue
-                            val relative = if (entry.name.startsWith("assets/")) entry.name.removePrefix("assets/") else entry.name
-                            require(relative == "game-manifest.json" || relative == "storyforge-project.json" || relative.startsWith("storyforge_assets/")) { "ملف غير مدعوم داخل الحزمة" }
+                            entries++
+                            require(entries <= 500) { "الحزمة تحتوي على ملفات كثيرة جدًا" }
+                            val name = entry.name
+                            require(!name.startsWith("/") && !name.contains('\\\\') &&
+                                name.split('/').none { it == ".." || it == "." || it.isBlank() }) { "مسار غير آمن داخل الحزمة" }
+                            require(seen.add(name)) { "الحزمة تحتوي على ملف مكرر" }
+                            if (entry.isDirectory) { zip.closeEntry(); continue }
+                            val relative = if (name.startsWith("assets/")) name.removePrefix("assets/") else name
+                            require(relative == "game-manifest.json" || relative == "storyforge-project.json" ||
+                                relative.startsWith("storyforge_assets/")) { "ملف غير مدعوم داخل الحزمة" }
                             val out = File(root, relative).canonicalFile
                             require(out.path.startsWith(root.canonicalPath + File.separator))
                             out.parentFile?.mkdirs()
-                            out.outputStream().buffered().use { zip.copyTo(it) }
+                            val limit = if (relative.endsWith(".json")) 10L * 1024 * 1024 else 20L * 1024 * 1024
+                            out.outputStream().buffered().use { output ->
+                                val buffer = ByteArray(8192)
+                                var entryBytes = 0L
+                                while (true) {
+                                    val count = zip.read(buffer)
+                                    if (count < 0) break
+                                    entryBytes += count
+                                    totalBytes += count
+                                    require(entryBytes <= limit && totalBytes <= 100L * 1024 * 1024) { "حجم الحزمة يتجاوز الحد الآمن" }
+                                    output.write(buffer, 0, count)
+                                }
+                            }
+                            zip.closeEntry()
                         }
                     }
                 } ?: error("تعذر قراءة الملف")
@@ -72,6 +96,17 @@ class PlayerActivity : ComponentActivity() {
                 val payload = org.json.JSONArray(File(root,"storyforge-project.json").readText())
                 require(payload.length() == 1) { "يجب أن تحتوي الحزمة على قصة واحدة" }
                 val p = payload.getJSONObject(0)
+                val assets = p.optJSONArray("assets")
+                data class AssetFile(val path:String,val mime:String,val sceneId:String?)
+                val assetFiles = (0 until (assets?.length() ?: 0)).mapNotNull { i ->
+                    val a = assets!!.getJSONObject(i)
+                    val relative = a.optString("relativePath")
+                    if (!relative.startsWith("storyforge_assets/") || relative.split('/').any { it == ".." || it == "." || it.isBlank() }) null
+                    else AssetFile(relative,a.optString("mimeType"),if(a.isNull("sceneId")) null else a.optString("sceneId"))
+                }.filter { asset ->
+                    val file = File(root,asset.path).canonicalFile
+                    file.path.startsWith(root.canonicalPath + File.separator) && file.isFile
+                }
                 val scenesJson = p.optJSONArray("scenes") ?: org.json.JSONArray()
                 val scenes = (0 until scenesJson.length()).map { ix ->
                     val s = scenesJson.getJSONObject(ix)
@@ -88,27 +123,18 @@ class PlayerActivity : ComponentActivity() {
                         val line = dialogue!!.getJSONObject(di)
                         line.optString("speaker") to line.optString("text")
                     }
-                    Scene(s.optString("id"),s.optString("title"),s.optString("text"),choices,lines)
+                    val sceneId = s.optString("id")
+                    val image = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("image/") }?.let { File(root,it.path) }
+                    val audio = assetFiles.firstOrNull { it.sceneId == sceneId && it.mime.startsWith("audio/") }?.let { File(root,it.path) }
+                    Scene(sceneId,s.optString("title"),s.optString("text"),choices,lines,image,audio)
                 }
                 val vars = linkedMapOf<String,Int>()
                 val varsJson = p.optJSONArray("variables")
                 for (i in 0 until (varsJson?.length() ?: 0)) {
                     val v = varsJson!!.getJSONObject(i); vars[v.optString("name")] = v.optInt("initialValue")
                 }
-                val assets = p.optJSONArray("assets")
-                var cover: File? = null
-                for (i in 0 until (assets?.length() ?: 0)) {
-                    val a = assets!!.getJSONObject(i)
-                    if (a.optString("mimeType").startsWith("image/") && a.isNull("sceneId")) {
-                        cover = File(root,a.optString("relativePath")); break
-                    }
-                }
-                if (cover == null) {
-                    for (i in 0 until (assets?.length() ?: 0)) {
-                        val a = assets!!.getJSONObject(i)
-                        if (a.optString("mimeType").startsWith("image/")) { cover = File(root,a.optString("relativePath")); break }
-                    }
-                }
+                val cover = assetFiles.firstOrNull { it.mime.startsWith("image/") && it.sceneId == null }?.let { File(root,it.path) }
+                    ?: assetFiles.firstOrNull { it.mime.startsWith("image/") }?.let { File(root,it.path) }
                 game = Game(p.optString("title",manifest.optString("title")),p.optString("description"),scenes,vars,cover)
                 errorMessage = null
             }.onFailure { errorMessage = it.message ?: "تعذر فتح اللعبة" }
@@ -135,7 +161,16 @@ class PlayerActivity : ComponentActivity() {
         var sceneId by remember(game.title) { mutableStateOf(game.scenes.firstOrNull()?.id) }
         var values by remember(game.title) { mutableStateOf(game.variables) }
         var revealed by remember { mutableIntStateOf(0) }
+        var audioPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+        var audioPlaying by remember { mutableStateOf(false) }
         val scene = game.scenes.firstOrNull { it.id == sceneId }
+        DisposableEffect(scene?.audio?.absolutePath) {
+            onDispose {
+                audioPlayer?.let { runCatching { if (it.isPlaying) it.stop(); it.release() } }
+                audioPlayer = null
+                audioPlaying = false
+            }
+        }
         val ended = scene == null || sceneId == "__END__"
         LaunchedEffect(scene?.id) {
             revealed = 0
@@ -184,18 +219,37 @@ class PlayerActivity : ComponentActivity() {
             } else {
                 LinearProgressIndicator(progress={ (game.scenes.indexOf(scene!!)+1).toFloat()/game.scenes.size.coerceAtLeast(1) },modifier=Modifier.fillMaxWidth())
                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.Bottom) {
-                    val image = remember(scene?.id) { scene?.let { current ->
-                        val root=File(filesDir,"installed_game")
-                        val files=root.walkTopDown().filter { it.isFile && it.extension.lowercase() in listOf("png","jpg","jpeg","webp") }.toList()
-                        val p=game.title
-                        files.firstOrNull { it.nameWithoutExtension.contains(current.id.take(8)) }
-                    } }
-                    image?.let { file -> val bitmap=remember(file.absolutePath){BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()}; bitmap?.let { Image(it,null,Modifier.fillMaxWidth().height(210.dp),contentScale=ContentScale.Crop) } }
+                    scene.image?.let { file ->
+                        val bitmap=remember(file.absolutePath){BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()}
+                        bitmap?.let { Image(it,null,Modifier.fillMaxWidth().height(210.dp),contentScale=ContentScale.Crop) }
+                    }
                     Text(scene!!.title,color=Gold,fontSize=23.sp,fontWeight=FontWeight.Bold)
                     Text(scene.text.take(revealed),color=Color.White,fontSize=16.sp,lineHeight=27.sp,modifier=Modifier.clickable{revealed=scene.text.length})
                     scene.speakerLines.forEach { (speaker,line) ->
                         Column(Modifier.fillMaxWidth().padding(top=8.dp).background(Color(0xFF202B38),RoundedCornerShape(12.dp)).padding(12.dp)) {
                             Text(speaker,color=Gold,fontWeight=FontWeight.Bold); Text(line,color=Color.White)
+                        }
+                    }
+                    scene.audio?.let { audioFile ->
+                        OutlinedButton(onClick = {
+                            runCatching {
+                                val existing = audioPlayer
+                                if (existing == null) {
+                                    val created = MediaPlayer()
+                                    created.setDataSource(this@PlayerActivity, Uri.fromFile(audioFile))
+                                    created.isLooping = true
+                                    created.setOnPreparedListener { it.start(); audioPlaying = true }
+                                    created.setOnErrorListener { mp, _, _ -> runCatching { mp.release() }; audioPlayer = null; audioPlaying = false; true }
+                                    created.prepareAsync()
+                                    audioPlayer = created
+                                } else if (existing.isPlaying) {
+                                    existing.pause(); audioPlaying = false
+                                } else {
+                                    existing.start(); audioPlaying = true
+                                }
+                            }.onFailure { audioPlaying = false }
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text(if (audioPlaying) "Ⅱ إيقاف صوت المشهد" else "♫ تشغيل صوت المشهد")
                         }
                     }
                     Spacer(Modifier.height(18.dp))
