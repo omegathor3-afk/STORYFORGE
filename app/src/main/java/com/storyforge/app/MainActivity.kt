@@ -869,28 +869,15 @@ private fun AudioPreviewCard(title: String, filePath: String) {
     var failed by remember(filePath) { mutableStateOf(false) }
     var volume by remember(filePath) { mutableFloatStateOf(0.75f) }
 
-    DisposableEffect(filePath) {
-        var disposed = false
-        var activePlayer: MediaPlayer? = null
-
-        fun releasePlayer() {
-            val media = activePlayer
-            activePlayer = null
-            player = null
-            prepared = false
-            preparing = false
-            playing = false
-            if (media != null) {
-                runCatching { media.setOnPreparedListener(null) }
-                runCatching { media.setOnCompletionListener(null) }
-                runCatching { media.setOnErrorListener(null) }
-                runCatching { media.release() }
-            }
-        }
-
+    DisposableEffect(filePath, player) {
+        val ownedPlayer = player
         onDispose {
-            disposed = true
-            releasePlayer()
+            if (ownedPlayer != null) {
+                runCatching { ownedPlayer.setOnPreparedListener(null) }
+                runCatching { ownedPlayer.setOnCompletionListener(null) }
+                runCatching { ownedPlayer.setOnErrorListener(null) }
+                runCatching { ownedPlayer.release() }
+            }
         }
     }
 
@@ -960,7 +947,7 @@ private fun AudioPreviewCard(title: String, filePath: String) {
                         }
                     },
                     enabled = !preparing && !failed && (!prepared || player != null)
-                ) { Text(if (preparing) "انتظر..." else if (playing) "إيقاف مؤقت" else if (prepared) "تشغيل" else "تشغيل") }
+                ) { Text(if (preparing) "انتظر..." else if (playing) "إيقاف مؤقت" else "تشغيل") }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("مستوى الصوت", color = Muted, fontSize = 11.sp)
