@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       params.push(limit);
       const result = await db().query(
-        `SELECT p.id,p.user_id,p.title,p.body,p.genre,p.created_at,
+        `SELECT p.id,p.user_id,p.title,p.body,p.genre,(p.story_json IS NOT NULL) AS has_story,p.created_at,
           COALESCE(pr.display_name,'كاتب مجهول') AS author_name,
           (SELECT count(*)::int FROM community_reactions r WHERE r.post_id=p.id) AS likes_count,
           (SELECT count(*)::int FROM community_comments c WHERE c.post_id=p.id AND c.status='published') AS comments_count,
