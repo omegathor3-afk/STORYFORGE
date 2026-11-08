@@ -59,7 +59,9 @@ The authenticated community API is implemented as a first backend milestone. It 
 - `GET|POST /api/community/posts/:id/comments`: read and add comments.
 - `POST /api/community/posts/:id/reactions`: toggle like, love, or inspiring reaction.
 - `GET|POST /api/community/profile`: read or update the signed-in member profile.
+- `GET /api/community/members?q=...`: discover member profiles.
 - `POST /api/community/follow`: follow or unfollow a member.
 - `POST /api/community/reports`: submit a safety or copyright report.
+- `GET|POST /api/community/moderation/reports`: protected moderation queue and hide/restore/dismiss actions.
 
-Apply the expanded `db/schema.sql` before deploying. All community routes require the same verified OIDC bearer-token configuration as the build service. The app must never embed database, GitHub, or storage credentials. Before opening public registration, configure a moderation workflow, privacy policy, abuse-response owner, backups, and retention rules. The current API stores story JSON in PostgreSQL; production deployments should add object storage for larger media and virus/content scanning before accepting uploads.
+Apply the expanded `db/schema.sql` before deploying. Set `COMMUNITY_MODERATOR_SUBJECTS` to a comma-separated allowlist of trusted OIDC subject IDs for moderation access. All community routes require the same verified OIDC bearer-token configuration as the build service. The app must never embed database, GitHub, or storage credentials. Before opening public registration, configure a moderation workflow, privacy policy, abuse-response owner, backups, and retention rules. The current API stores story JSON in PostgreSQL; production deployments should add object storage for larger media and virus/content scanning before accepting uploads.
