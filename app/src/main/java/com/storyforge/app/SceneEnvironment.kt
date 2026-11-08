@@ -70,12 +70,26 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                     }
                 }
                 "stump" -> {
-                    drawLine(dark, Offset(x, y), Offset(x, y + unit * 0.55f), unit * 0.42f, cap = StrokeCap.Round)
-                    drawOval(Color(0xFF514B3C), Offset(x - unit * 0.22f, y - unit * 0.1f), androidx.compose.ui.geometry.Size(unit * 0.44f, unit * 0.18f))
+                    drawLine(Color(0xFF292D25), Offset(x-unit*0.22f,y+unit*0.48f), Offset(x-unit*0.17f,y-unit*0.05f), unit*0.34f, cap=StrokeCap.Round)
+                    drawLine(Color(0xFF292D25), Offset(x+unit*0.18f,y+unit*0.48f), Offset(x+unit*0.16f,y-unit*0.05f), unit*0.34f, cap=StrokeCap.Round)
+                    drawOval(Color(0xFF625943), Offset(x-unit*0.23f,y-unit*0.14f), androidx.compose.ui.geometry.Size(unit*0.46f,unit*0.20f))
+                    drawOval(Color(0xFF292D25), Offset(x-unit*0.13f,y-unit*0.095f), androidx.compose.ui.geometry.Size(unit*0.26f,unit*0.10f), style=Stroke(width=unit*0.025f))
+                    for(k in 0..2) drawLine(Color(0xFF8A7650).copy(alpha=0.42f),Offset(x-unit*(0.14f-k*0.04f),y+unit*0.10f),Offset(x-unit*(0.18f-k*0.03f),y+unit*0.36f),unit*0.022f)
                 }
                 "rocks" -> {
-                    val path = Path().apply { moveTo(x-unit*0.65f,y); lineTo(x-unit*0.4f,y-unit*0.55f); lineTo(x+unit*0.15f,y-unit*0.7f); lineTo(x+unit*0.68f,y-unit*0.15f); lineTo(x+unit*0.55f,y+unit*0.05f); close() }
-                    drawPath(path, Color(0xFF303832))
+                    val stone = Path().apply {
+                        moveTo(x-unit*0.66f,y+unit*0.02f); lineTo(x-unit*0.48f,y-unit*0.42f)
+                        lineTo(x-unit*0.12f,y-unit*0.70f); lineTo(x+unit*0.34f,y-unit*0.60f)
+                        lineTo(x+unit*0.68f,y-unit*0.18f); lineTo(x+unit*0.56f,y+unit*0.08f); close()
+                    }
+                    drawPath(stone,Color(0xFF303832))
+                    val face = Path().apply {
+                        moveTo(x-unit*0.48f,y-unit*0.42f); lineTo(x-unit*0.12f,y-unit*0.70f)
+                        lineTo(x+unit*0.08f,y-unit*0.16f); lineTo(x-unit*0.34f,y-unit*0.04f); close()
+                    }
+                    drawPath(face,Color(0xFF465047).copy(alpha=0.48f))
+                    drawLine(Color(0xFF171D19),Offset(x+unit*0.10f,y-unit*0.13f),Offset(x+unit*0.28f,y+unit*0.02f),unit*0.035f)
+                    drawLine(Color(0xFF697064).copy(alpha=0.45f),Offset(x-unit*0.38f,y-unit*0.34f),Offset(x-unit*0.12f,y-unit*0.55f),unit*0.025f)
                 }
                 "fungus" -> {
                     drawLine(Color(0xFF536344), Offset(x, y), Offset(x, y-unit*0.6f), unit*0.1f)
