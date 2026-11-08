@@ -603,12 +603,12 @@ class MainActivity : ComponentActivity() {
                                         Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
                                         Text("تركيبات أجواء جاهزة", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         val atmospherePresets = listOf(
-                                            "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "vignette"),
+                                            "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "vignette"),
                                             "مطر المطاردة" to setOf("heavy_rain", "rain", "fog", "ground_fog", "black_shadows", "lightning", "crows", "vignette"),
-                                            "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow", "insects"),
+                                            "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow", "insects", "pulsing_fungus"),
                                             "ليلة القمر" to setOf("moon_glow", "light_shafts", "fireflies", "watching_eyes", "fog", "vignette"),
-                                            "معبد غارق" to setOf("ground_fog", "dense_fog", "floating_dust", "distant_glow", "black_shadows", "vignette"),
-                                            "كهف العظام" to setOf("ground_fog", "dust", "ash", "watching_eyes", "black_shadows", "embers")
+                                            "معبد غارق" to setOf("ground_fog", "dense_fog", "floating_dust", "distant_glow", "black_shadows", "lanterns", "vignette"),
+                                            "كهف العظام" to setOf("ground_fog", "dust", "ash", "watching_eyes", "black_shadows", "moving_shadows", "pulsing_fungus", "embers")
                                         )
                                         atmospherePresets.chunked(2).forEach { presetRow ->
                                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
