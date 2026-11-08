@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror, feature/standalone-apk-pipeline, feature/cloud-build-center ]
+    branches: [ main, feature/starter-project-wizard, feature/library-search, feature/ci-maven-mirror, feature/standalone-apk-pipeline, feature/cloud-build-center, feature/permanent-screenshot-capture ]
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
 
       - name: Validate standalone build script syntax
         run: |
-          python3 -m py_compile scripts/prepare_standalone_game.py scripts/test_prepare_standalone_game.py scripts/create_ci_storygame_fixture.py
+          python3 -m py_compile scripts/prepare_standalone_game.py scripts/test_prepare_standalone_game.py scripts/create_ci_storygame_fixture.py scripts/capture_storyforge_screenshots.py
           python3 -m unittest discover -s scripts -p "test_*.py" -v
 
       - name: Setup Java 17
@@ -139,23 +139,22 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK"
           cp "$APK" player/build/outputs/apk/release/player-standalone-ci-release.apk
 
-      - name: Capture real app screenshot on Android emulator
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Capture real app screenshots on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          script: |
-            set -euo pipefail
-            mkdir -p screenshots
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell am force-stop com.storyforge.app || true
-            adb shell monkey -p com.storyforge.app -c android.intent.category.LAUNCHER 1
-            sleep 18
-            adb shell screencap -p /sdcard/storyforge-home.png
-            adb pull /sdcard/storyforge-home.png screenshots/storyforge-home.png
-            test -s screenshots/storyforge-home.png
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 scripts/capture_storyforge_screenshots.py
 
       - name: Upload real app screenshots
         uses: actions/upload-artifact@v4
