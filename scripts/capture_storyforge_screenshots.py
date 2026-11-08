@@ -100,13 +100,30 @@ def tap_bottom_tab(label: str, index: int) -> None:
     time.sleep(2)
 
 
+def section_is_visible(label: str) -> bool:
+    root = hierarchy()
+    if root is None:
+        return False
+    _, height, _ = dimensions()
+    for node in root.iter("node"):
+        value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
+        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if label in value and bounds:
+            _, y1, _, y2 = map(int, bounds.groups())
+            # Ignore Compose semantics nodes that exist in the tree but are outside
+            # the actual viewport or hidden beneath the bottom navigation.
+            if y2 > 150 and y1 < height - 235 and y2 - y1 < 220:
+                return True
+    return False
+
+
 def scroll_to_text(label: str, max_swipes: int = 18) -> None:
     for _ in range(max_swipes):
-        if label in visible_text():
+        if section_is_visible(label):
             return
         adb("shell", "input", "swipe", "540", "1570", "540", "560", "450")
-        time.sleep(0.35)
-    raise RuntimeError(f"Could not scroll to section {label!r}; current UI: {visible_text()[:1000]}")
+        time.sleep(0.45)
+    raise RuntimeError(f"Could not bring section {label!r} into the visible viewport; current UI: {visible_text()[:1000]}")
 
 
 def capture(filename: str) -> dict:
@@ -231,17 +248,33 @@ def main() -> None:
     captures.append(capture("07-library-project.png"))
 
     tap_bottom_tab("المعاينة", 2)
-    require_visible("The Ashen Bell")
+    preview_ui = visible_text()
+    if not any(token in preview_ui for token in ("معاينة تفاعلية", "الطرقات على الباب", "مشهد")):
+        raise RuntimeError(f"Story preview did not open: {preview_ui[:1200]}")
     time.sleep(1)
     captures.append(capture("08-story-preview.png"))
 
-    # Open the full-screen story player to inspect the rendered atmosphere layers in context.
+    # Open the full-screen story player and record a short clip so moving layers
+    # (fog, rain, spores, fireflies) can be reviewed rather than inferred from PNGs.
     require_tap("ابدأ التجربة السينمائية الغامرة")
-    time.sleep(2)
+    time.sleep(1)
     player_ui = visible_text()
-    if not any(token in player_ui for token in ("المشهد", "متابعة", "إنهاء القصة")):
+    if not any(token in player_ui for token in ("المشهد", "متابعة", "انتهت الحكاية", "الطرقات على الباب")):
         raise RuntimeError(f"Immersive story player did not open: {player_ui[:1200]}")
     captures.append(capture("09-immersive-atmosphere-player.png"))
+    adb("shell", "settings", "put", "global", "window_animation_scale", "1.0")
+    adb("shell", "settings", "put", "global", "transition_animation_scale", "1.0")
+    adb("shell", "settings", "put", "global", "animator_duration_scale", "1.0")
+    video_remote = "/sdcard/storyforge-immersive-review.mp4"
+    recorder = subprocess.Popen(["adb", "shell", "screenrecord", "--time-limit", "9", video_remote],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(9.8)
+    recorder.wait(timeout=5)
+    video_path = OUT / "09-immersive-atmosphere-review.mp4"
+    subprocess.run(["adb", "pull", video_remote, str(video_path)], check=True, capture_output=True)
+    if not video_path.exists() or video_path.stat().st_size < 12000:
+        raise RuntimeError("Immersive player recording is missing or unexpectedly small.")
+    print(f"Captured {video_path} ({video_path.stat().st_size} bytes)")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
 
@@ -268,11 +301,20 @@ def main() -> None:
         },
         "fixture_project": "The Ashen Bell",
         "screenshots": captures,
+        "video_review": {
+            "file": "09-immersive-atmosphere-review.mp4",
+            "bytes": video_path.stat().st_size,
+            "sha256": hashlib.sha256(video_path.read_bytes()).hexdigest(),
+            "duration_seconds": 9,
+        },
     }
     (OUT / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"Captured and verified {len(captures)} meaningful real app screenshots.")
+    hashes = [item["sha256"] for item in captures]
+    if len(set(hashes)) != len(hashes):
+        raise RuntimeError("At least two screenshot targets produced identical images; navigation must be fixed.")
+    print(f"Captured and verified {len(captures)} distinct real app screenshots plus a 9-second player recording.")
 
 
 if __name__ == "__main__":
