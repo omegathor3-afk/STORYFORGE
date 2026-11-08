@@ -608,7 +608,7 @@ class MainActivity : ComponentActivity() {
                                             "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow", "insects", "pulsing_fungus"),
                                             "ليلة القمر" to setOf("moon_glow", "light_shafts", "fireflies", "watching_eyes", "fog", "vignette"),
                                             "معبد غارق" to setOf("ground_fog", "dense_fog", "floating_dust", "distant_glow", "black_shadows", "lanterns", "vignette"),
-                                            "كهف العظام" to setOf("ground_fog", "dust", "ash", "watching_eyes", "black_shadows", "moving_shadows", "pulsing_fungus", "embers")
+                                            "كهف العظام" to setOf("ground_fog", "dust", "ash", "watching_eyes", "black_shadows", "moving_shadows", "pulsing_fungus", "embers"),\n                                            "مقبرة منسية" to setOf("fog", "ground_fog", "dead_leaves", "moving_shadows", "watching_eyes", "crows", "vignette"),\n                                            "قرية مهجورة" to setOf("fog", "ground_fog", "lanterns", "embers", "floating_dust", "black_shadows", "vignette")
                                         )
                                         atmospherePresets.chunked(2).forEach { presetRow ->
                                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
