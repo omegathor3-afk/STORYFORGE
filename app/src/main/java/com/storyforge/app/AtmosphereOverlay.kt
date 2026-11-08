@@ -192,7 +192,27 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
         }
         if ("lightning" in active) {
             val pulse = (1f - kotlin.math.abs(flash - 0.18f) / 0.12f).coerceIn(0f, 1f)
-            if (pulse > 0f) drawRect(Color(0xFFBAC7CE).copy(alpha = pulse * 0.075f * strength))
+            if (pulse > 0f) {
+                drawRect(Color(0xFFBAC7CE).copy(alpha = pulse * 0.052f * strength))
+                // A distant, crooked bolt gives the flash a visible source in the sky.
+                val boltX = w * (0.68f + sin((flash * 2f * PI).toFloat()) * 0.025f)
+                val bolt = Path().apply {
+                    moveTo(boltX, h * 0.04f)
+                    lineTo(boltX - w * 0.018f, h * 0.13f)
+                    lineTo(boltX + w * 0.006f, h * 0.13f)
+                    lineTo(boltX - w * 0.032f, h * 0.27f)
+                    lineTo(boltX - w * 0.004f, h * 0.205f)
+                    lineTo(boltX - w * 0.012f, h * 0.34f)
+                }
+                drawPath(bolt, Color(0xFFD5E0E2).copy(alpha = pulse * 0.62f * strength),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f, cap = StrokeCap.Square))
+                val fork = Path().apply {
+                    moveTo(boltX - w * 0.018f, h * 0.13f)
+                    lineTo(boltX - w * 0.064f, h * 0.205f)
+                }
+                drawPath(fork, Color(0xFFB8C8CA).copy(alpha = pulse * 0.40f * strength),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.9f, cap = StrokeCap.Square))
+            }
         }
         // Wildlife is animated as small silhouettes with irregular paths, not glowing icon-like dots.
         if ("crows" in active) {
