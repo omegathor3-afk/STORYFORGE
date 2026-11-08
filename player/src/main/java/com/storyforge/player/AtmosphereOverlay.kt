@@ -66,6 +66,25 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
             }
             drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.58f to Color.Transparent, 1f to tint.copy(alpha = 0.035f * strength)))
         }
+        if ("ground_fog" in active) {
+            // Low, stretched mist banks crawl along the floor instead of filling the whole frame.
+            for (i in 0..5) {
+                val direction = if (i % 2 == 0) 1f else -0.58f
+                val x = ((drift * direction + i * 0.31f) % 1.55f - 0.25f) * w
+                val y = h * (0.76f + (i % 3) * 0.055f)
+                val bankWidth = w * (0.22f + (i % 2) * 0.07f)
+                val bankHeight = h * 0.075f
+                val alpha = (0.075f + (i % 3) * 0.012f) * strength
+                drawOval(
+                    Brush.radialGradient(
+                        listOf(tint.copy(alpha = alpha), tint.copy(alpha = alpha * 0.42f), Color.Transparent),
+                        center = Offset(x, y), radius = bankWidth
+                    ),
+                    topLeft = Offset(x - bankWidth, y - bankHeight),
+                    size = androidx.compose.ui.geometry.Size(bankWidth * 2f, bankHeight * 2f)
+                )
+            }
+        }
         if ("rain" in active || "heavy_rain" in active || "wind" in active) {
             // Three depth planes: fine distant rain, readable mid-rain and a few close streaks.
             val heavy = "heavy_rain" in active
