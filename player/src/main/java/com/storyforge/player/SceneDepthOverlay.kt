@@ -93,6 +93,29 @@ internal fun SceneDepthOverlay(effects: List<String>, theme: String, layer: Stri
                 val y=(i*47f+h*0.12f)%h
                 drawCircle(Color(0x77C7C6A4).copy(alpha=strength),radius=if(i%5==0)2.2f else 1.1f,center=Offset(x,y))
             }
+            if ("dead_forest" in active || "branches" in active) {
+                // Foreground roots flex slowly at a different speed from the distant tree line.
+                for (i in 0..6) {
+                    val anchorX = w * (i / 6f)
+                    val wave = sin((drift * 2f * PI + i * 1.31f).toFloat())
+                    val reach = w * (0.045f + (i % 3) * 0.018f)
+                    val root = Path().apply {
+                        moveTo(anchorX, h * (0.91f + (i % 2) * 0.035f))
+                        cubicTo(anchorX + reach * (if (i % 2 == 0) -0.25f else 0.25f), h * 0.86f,
+                            anchorX + reach * (0.42f + wave * 0.10f), h * 0.94f,
+                            anchorX + reach * (0.78f + wave * 0.18f), h * 0.985f)
+                    }
+                    drawPath(root, Color(0xFF171D16).copy(alpha = 0.72f * strength),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f + (i % 3) * 0.8f, cap = StrokeCap.Round))
+                    val hairline = Path().apply {
+                        moveTo(anchorX + 1.5f, h * 0.925f)
+                        quadraticTo(anchorX + reach * 0.42f, h * 0.94f,
+                            anchorX + reach * (0.70f + wave * 0.14f), h * 0.975f)
+                    }
+                    drawPath(hairline, Color(0xFF414638).copy(alpha = 0.32f * strength),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.75f, cap = StrokeCap.Round))
+                }
+            }
         }
     }
 }
