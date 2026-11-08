@@ -221,6 +221,8 @@ def main() -> None:
     require_tap("غابة ميتة")
     time.sleep(1)
     captures.append(capture("02-studio-atmosphere-effects.png"))
+    scroll_to_text("معاينة حية للمؤثرات")
+    captures.append(capture("02b-studio-live-atmosphere-preview.png"))
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
     scroll_to_text("تخطيطات بيئية جاهزة")
@@ -229,6 +231,8 @@ def main() -> None:
     captures.append(capture("03-studio-environment-layout.png"))
 
     scroll_to_text("حوارات المشهد")
+    if tap_text("＋ سطر حوار"):
+        time.sleep(0.8)
     captures.append(capture("04-studio-dialogue.png"))
 
     scroll_to_text("اختيارات اللاعب")
