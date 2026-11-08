@@ -45,13 +45,13 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
         val h = size.height
         // A quiet lens falloff ties every layer into the original artwork.
         drawRect(Brush.verticalGradient(listOf(Color(0x16020708), Color.Transparent, Color(0x38030708))))
+        val tint = when {
+            "blood_mist" in active -> Color(0xFF74464A)
+            "snow" in active -> Color(0xFF8D9EAA)
+            "spores" in active -> Color(0xFF788A67)
+            else -> Color(0xFF929B8F)
+        }
         if ("fog" in active || "dense_fog" in active || "blood_mist" in active || "ground_fog" in active) {
-            val tint = when {
-                "blood_mist" in active -> Color(0xFF74464A)
-                "snow" in active -> Color(0xFF8D9EAA)
-                "spores" in active -> Color(0xFF788A67)
-                else -> Color(0xFF929B8F)
-            }
             // Broad overlapping gradients create soft, uneven banks rather than hard circles.
             for (i in 0..4) {
                 val direction = if (i % 2 == 0) 1f else -0.72f
