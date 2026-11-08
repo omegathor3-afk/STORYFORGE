@@ -692,6 +692,20 @@ class MainActivity : ComponentActivity() {
                                                 SceneProp(type = "broken_cart", x = 0.78f, y = 0.86f, scale = 1.0f, foreground = true),
                                                 SceneProp(type = "crates", x = 0.28f, y = 0.86f, scale = 0.9f),
                                                 SceneProp(type = "lantern", x = 0.86f, y = 0.5f, scale = 0.8f)
+                                            ),
+                                            "معبد غارق" to listOf(
+                                                SceneProp(type = "shrine", x = 0.5f, y = 0.68f, scale = 1.6f),
+                                                SceneProp(type = "rocks", x = 0.16f, y = 0.88f, scale = 1.0f),
+                                                SceneProp(type = "hanging_roots", x = 0.76f, y = 0.34f, scale = 1.3f),
+                                                SceneProp(type = "fungus", x = 0.82f, y = 0.82f, scale = 1.1f),
+                                                SceneProp(type = "bones", x = 0.34f, y = 0.91f, scale = 0.7f)
+                                            ),
+                                            "كهف العظام" to listOf(
+                                                SceneProp(type = "hanging_cage", x = 0.68f, y = 0.48f, scale = 1.2f),
+                                                SceneProp(type = "bones", x = 0.22f, y = 0.9f, scale = 1.0f),
+                                                SceneProp(type = "bones", x = 0.78f, y = 0.88f, scale = 0.8f, foreground = true),
+                                                SceneProp(type = "shrine", x = 0.48f, y = 0.7f, scale = 1.3f),
+                                                SceneProp(type = "thorn_bush", x = 0.12f, y = 0.86f, scale = 0.9f)
                                             )
                                         )
                                         propLayouts.chunked(2).forEach { layoutRow ->
