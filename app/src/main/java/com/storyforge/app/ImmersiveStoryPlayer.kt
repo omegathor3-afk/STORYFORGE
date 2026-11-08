@@ -203,7 +203,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                                         OutlinedButton(onClick = {
                                             values = applyStoryEffect(scene.choiceEffects.getOrNull(index).orEmpty(), values)
                                             moveTo(scene.choiceTargets.getOrNull(index))
-                                        }, modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp), shape = RoundedCornerShape(14.dp),
+                                        }, modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp),
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                                             shape = WeatheredShape,
                                             border = androidx.compose.foundation.BorderStroke(1.dp, PlayerGold.copy(alpha = 0.55f))) {
