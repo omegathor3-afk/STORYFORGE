@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db, requireUser, respondError } from "../../_lib/runtime";
+import { db, requireUser, respondError } from "../_lib/runtime";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
