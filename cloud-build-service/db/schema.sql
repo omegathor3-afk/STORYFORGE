@@ -81,3 +81,7 @@ CREATE TABLE IF NOT EXISTS community_reports (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(reporter_id,target_type,target_id)
 );
+
+ALTER TABLE community_reports ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'
+  CHECK (status IN ('pending','reviewed','dismissed'));
+CREATE INDEX IF NOT EXISTS community_reports_queue ON community_reports(status,created_at DESC);
