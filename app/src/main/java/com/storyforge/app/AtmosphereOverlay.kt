@@ -163,8 +163,8 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 drawPath(leaf, Color(0xFF82745B).copy(alpha = 0.36f * strength))
             }
         }
-        if ("fireflies" in active || "embers" in active || "spores" in active || "ash" in active || "dust" in active || "snow" in active) {
-            val count = when { "snow" in active -> 25; "spores" in active -> 18; else -> 12 }
+        if ("fireflies" in active || "embers" in active || "spores" in active || "ash" in active || "dust" in active || "floating_dust" in active || "snow" in active) {
+            val count = when { "snow" in active -> 25; "spores" in active -> 18; "floating_dust" in active -> 22; else -> 12 }
             val color = when {
                 "fireflies" in active -> Color(0xFFB6C88B)
                 "embers" in active -> Color(0xFFC27A50)
@@ -181,6 +181,61 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 drawCircle(Brush.radialGradient(listOf(color.copy(alpha = twinkle * strength), Color.Transparent), center = Offset(x, y), radius = radius * 4f),
                     radius = radius * 4f, center = Offset(x, y))
                 drawCircle(color.copy(alpha = twinkle * 0.52f * strength), radius = radius * 0.48f, center = Offset(x, y))
+            }
+        }
+        if ("moon_glow" in active) {
+            val moonX = w * 0.78f
+            val moonY = h * 0.19f
+            val moonRadius = w * 0.24f
+            drawCircle(
+                Brush.radialGradient(
+                    listOf(Color(0xFFB9C5AE).copy(alpha = 0.16f * strength), Color(0xFF899B91).copy(alpha = 0.055f * strength), Color.Transparent),
+                    center = Offset(moonX, moonY), radius = moonRadius
+                ), radius = moonRadius, center = Offset(moonX, moonY)
+            )
+        }
+        if ("light_shafts" in active) {
+            for (i in 0..2) {
+                val topX = w * (0.18f + i * 0.31f)
+                val lowerX = topX + w * (0.10f + i * 0.018f)
+                val shaft = Path().apply {
+                    moveTo(topX, h * 0.08f)
+                    lineTo(topX + w * 0.025f, h * 0.08f)
+                    lineTo(lowerX + w * 0.055f, h * 0.72f)
+                    lineTo(lowerX - w * 0.055f, h * 0.72f)
+                    close()
+                }
+                drawPath(shaft, Color(0xFFB5C1A6).copy(alpha = (0.018f + i * 0.004f) * strength))
+            }
+        }
+        if ("vignette" in active) {
+            val radius = maxOf(w, h) * 0.78f
+            drawRect(
+                Brush.radialGradient(
+                    0.0f to Color.Transparent,
+                    0.58f to Color.Transparent,
+                    1.0f to Color(0xFF020504).copy(alpha = 0.66f * strength),
+                    center = Offset(w * 0.5f, h * 0.48f), radius = radius
+                )
+            )
+        }
+        if ("dead_leaves" in active) {
+            for (i in 0..13) {
+                val phase = (drift * (0.42f + (i % 4) * 0.09f) + i * 0.137f) % 1f
+                val x = (i * w * 0.113f + sin((phase * 2f * PI).toFloat()) * w * 0.035f + drift * w * 0.045f) % w
+                val y = (phase * h * 1.12f) - h * 0.06f
+                val size = 3.2f + (i % 4) * 1.7f
+                val sway = sin((phase * 4f * PI + i).toFloat()) * size * 1.8f
+                val leaf = Path().apply {
+                    moveTo(x - size, y)
+                    quadraticTo(x - size * 0.15f, y - size * 0.85f, x + size, y + sway * 0.25f)
+                    quadraticTo(x + size * 0.15f, y + size * 0.8f, x - size, y)
+                    close()
+                }
+                val leafColor = if (i % 3 == 0) Color(0xFF75644A) else Color(0xFF9A805A)
+                drawPath(leaf, leafColor.copy(alpha = (0.28f + (i % 3) * 0.07f) * strength))
+                drawLine(Color(0xFF342E25).copy(alpha = 0.32f * strength),
+                    Offset(x - size * 0.65f, y), Offset(x + size * 0.75f, y + sway * 0.2f), 0.55f)
             }
         }
         if ("distant_glow" in active) {
