@@ -314,11 +314,11 @@ class MainActivity : ComponentActivity() {
                     containerColor = Ink,
                     bottomBar = {
                         NavigationBar(containerColor = Panel, contentColor = Gold) {
-                            listOf("المكتبة", "الاستوديو", "المعاينة", "التعلّم", "بناء APK").forEachIndexed { i, label ->
+                            listOf("المكتبة", "الاستوديو", "المعاينة", "التعلّم", "بناء APK", "المجتمع").forEachIndexed { i, label ->
                                 NavigationBarItem(
                                     selected = page == i,
                                     onClick = { page = i },
-                                    icon = { Text(listOf("▤", "✎", "▷", "؟", "⬇")[i], fontSize = 20.sp) },
+                                    icon = { Text(listOf("▤", "✎", "▷", "؟", "⬇", "♧")[i], fontSize = 20.sp) },
                                     label = { Text(label) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = Gold, selectedTextColor = Gold,
@@ -1296,6 +1296,13 @@ class MainActivity : ComponentActivity() {
                                         ))
                                     },
                                     onOpenLibrary = { page = 0 }
+                                )
+                            }
+                            5 -> {
+                                CommunityHub(
+                                    apiBaseUrl = cloudApiBaseUrl,
+                                    accessToken = cloudAccessToken,
+                                    onOpenBuildCenter = { page = 4 }
                                 )
                             }
                         }
