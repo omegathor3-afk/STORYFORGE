@@ -37,12 +37,30 @@ internal fun SceneDepthOverlay(effects: List<String>, theme: String, layer: Stri
                     while(x<w*1.1f) {
                         val treeHeight=h*(0.10f+((i*17+row*11)%9)*0.012f)
                         val sway=sin((drift*2f*PI+i*0.7f+row).toFloat())*w*0.003f
-                        val trunk=Path().apply { moveTo(x-w*0.009f,baseY);lineTo(x+sway,baseY-treeHeight);lineTo(x+w*0.012f,baseY);close() }
-                        drawPath(trunk,color)
-                        for(b in 0..2) {
-                            val by=baseY-treeHeight*(0.35f+b*0.2f);val dir=if((i+b)%2==0)-1f else 1f
-                            drawLine(color,Offset(x+sway*0.5f,by),Offset(x+sway*0.5f+dir*w*0.025f,by-h*0.035f),strokeWidth=(row+1)*1.3f,cap=StrokeCap.Round)
+                        val trunk=Path().apply {
+                            moveTo(x-w*0.010f,baseY)
+                            cubicTo(x-w*0.020f,baseY-treeHeight*0.28f,x+sway-w*0.006f,baseY-treeHeight*0.72f,x+sway,baseY-treeHeight)
+                            cubicTo(x+sway+w*0.010f,baseY-treeHeight*0.68f,x+w*0.012f,baseY-treeHeight*0.25f,x+w*0.021f,baseY)
+                            close()
                         }
+                        drawPath(trunk,color)
+                        // Broken, curved limbs grow at uneven angles from the trunk.
+                        for(b in 0..3) {
+                            val by=baseY-treeHeight*(0.25f+b*0.17f)
+                            val dir=if((i+b)%2==0)-1f else 1f
+                            val limb=Path().apply {
+                                moveTo(x+sway*0.45f,by)
+                                cubicTo(x+dir*w*0.012f,by-h*0.012f,x+dir*w*0.020f,by-h*0.045f,x+dir*w*(0.030f+(b%2)*0.008f),by-h*(0.065f+(b%2)*0.012f))
+                            }
+                            drawPath(limb,color,style=androidx.compose.ui.graphics.drawscope.Stroke(width=(row+1)*1.45f,cap=StrokeCap.Round))
+                        }
+                        val root=Path().apply {
+                            moveTo(x,baseY-treeHeight*0.03f)
+                            cubicTo(x-w*0.018f,baseY+h*0.012f,x-w*0.025f,baseY+h*0.018f,x-w*0.038f,baseY+h*0.022f)
+                            moveTo(x+w*0.003f,baseY-treeHeight*0.02f)
+                            cubicTo(x+w*0.018f,baseY+h*0.012f,x+w*0.027f,baseY+h*0.015f,x+w*0.040f,baseY+h*0.019f)
+                        }
+                        drawPath(root,color.copy(alpha=alpha*0.72f),style=androidx.compose.ui.graphics.drawscope.Stroke(width=(row+1)*1.2f,cap=StrokeCap.Round))
                         x+=w*step;i++
                     }
                 }
