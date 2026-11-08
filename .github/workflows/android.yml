@@ -29,10 +29,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.9'
+      - name: Install Gradle 8.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_VERSION="8.9"
+          DIST_DIR="$RUNNER_TEMP/gradle-$GRADLE_VERSION"
+          ZIP="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          mkdir -p "$DIST_DIR"
+          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 \
+            "https://downloads.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip" \
+            --output "$ZIP"
+          unzip -q "$ZIP" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin/gradle" --version
 
       - name: Run story engine tests
         run: gradle --no-daemon :app:testDebugUnitTest
