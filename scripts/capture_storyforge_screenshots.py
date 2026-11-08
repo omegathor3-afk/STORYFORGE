@@ -171,30 +171,57 @@ def main() -> None:
     type_ascii("The Ashen Bell")
     require_tap("وصف مختصر", contains=True)
     type_ascii("A haunted village where every bell toll erases one memory.")
+    # Hide the software keyboard before tapping the dialog confirmation button.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.8)
     require_tap("إنشاء")
-    time.sleep(3)
+    time.sleep(2)
+    current_ui = visible_text()
+    if "مشروع جديد" in current_ui:
+        raise RuntimeError(f"Project dialog is still open after confirmation: {current_ui[:1000]}")
     require_visible("The Ashen Bell")
+    require_visible("فحص القصة")
 
-    # Library now contains a real generated starter story, not an empty placeholder.
+    # The create action selects the new project and opens Studio (page 1).
+    captures.append(capture("01-studio-project.png"))
+
+    # Configure a real scene atmosphere, then capture the selected effects in the editor.
+    for _ in range(12):
+        if "تركيبات أجواء جاهزة" in visible_text():
+            break
+        adb("shell", "input", "swipe", "540", "1550", "540", "620", "500")
+        time.sleep(0.35)
+    require_visible("تركيبات أجواء جاهزة")
+    require_tap("غابة ميتة")
+    time.sleep(1)
+    captures.append(capture("02-studio-atmosphere-effects.png"))
+
+    # Return to the top of the long Studio screen before using bottom navigation.
+    for _ in range(12):
+        adb("shell", "input", "swipe", "540", "500", "540", "1550", "350")
+    time.sleep(0.8)
     tap_bottom_tab("المكتبة", 0)
     require_visible("The Ashen Bell")
-    captures.append(capture("01-library-project.png"))
-
-    tap_bottom_tab("الاستوديو", 1)
-    require_visible("The Ashen Bell")
-    captures.append(capture("02-studio-project.png"))
+    if "مشروع جديد" in visible_text():
+        raise RuntimeError("Unexpected project dialog while viewing the library.")
+    captures.append(capture("03-library-project.png"))
 
     tap_bottom_tab("المعاينة", 2)
-    time.sleep(2)
-    captures.append(capture("03-story-preview.png"))
+    require_visible("The Ashen Bell")
+    time.sleep(1)
+    captures.append(capture("04-story-preview.png"))
 
     tap_bottom_tab("التعلّم", 3)
-    require_visible("أكاديمية STORYFORGE")
-    captures.append(capture("04-learning-academy.png"))
+    academy_ui = visible_text()
+    if not any(token in academy_ui for token in ("أكاديمية", "التعلّم", "تعلم")):
+        raise RuntimeError(f"Learning center did not open: {academy_ui[:1200]}")
+    captures.append(capture("05-learning-academy.png"))
 
     tap_bottom_tab("بناء APK", 4)
-    require_visible("مركز بناء الألعاب")
-    captures.append(capture("05-build-center.png"))
+    build_ui = visible_text()
+    if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
+        raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
+    captures.append(capture("06-build-center.png"))
 
     manifest = {
         "application": "STORYFORGE",
