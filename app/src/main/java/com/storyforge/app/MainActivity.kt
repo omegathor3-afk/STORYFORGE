@@ -602,6 +602,31 @@ class MainActivity : ComponentActivity() {
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
                                         FieldLabel("مؤثرات الجو لهذا المشهد")
                                         Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
+                                        Spacer(Modifier.height(10.dp))
+                                        Text("معاينة حية للمؤثرات", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Box(
+                                            Modifier.fillMaxWidth().height(154.dp)
+                                                .clip(WeatheredShape)
+                                                .background(Color(0xFF0A100D))
+                                        ) {
+                                            AtmosphereOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            Column(
+                                                Modifier.align(Alignment.BottomStart).padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text("المشهد الآن", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    if (scene.atmosphereEffects.isEmpty()) "اختر مؤثرًا لتشاهد تغيّر الأجواء هنا"
+                                                    else "${scene.atmosphereEffects.size} طبقة جوية نشطة · ${(scene.atmosphereIntensity * 100).toInt()}٪",
+                                                    color = Color(0xFFE0E3DA), fontSize = 10.sp
+                                                )
+                                            }
+                                        }
                                         Text("تركيبات أجواء جاهزة", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         val atmospherePresets = listOf(
                                             "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "vignette"),
@@ -641,31 +666,6 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                     if (rowOptions.size == 1) Spacer(Modifier.weight(1f))
                                                 }
-                                            }
-                                        }
-                                        Spacer(Modifier.height(10.dp))
-                                        Text("معاينة حية للمؤثرات", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                        Box(
-                                            Modifier.fillMaxWidth().height(154.dp)
-                                                .clip(WeatheredShape)
-                                                .background(Color(0xFF0A100D))
-                                        ) {
-                                            AtmosphereOverlay(
-                                                effects = scene.atmosphereEffects,
-                                                theme = current.visualTheme,
-                                                intensity = scene.atmosphereIntensity,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                            Column(
-                                                Modifier.align(Alignment.BottomStart).padding(12.dp),
-                                                verticalArrangement = Arrangement.spacedBy(3.dp)
-                                            ) {
-                                                Text("المشهد الآن", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                Text(
-                                                    if (scene.atmosphereEffects.isEmpty()) "اختر مؤثرًا لتشاهد تغيّر الأجواء هنا"
-                                                    else "${scene.atmosphereEffects.size} طبقة جوية نشطة · ${(scene.atmosphereIntensity * 100).toInt()}٪",
-                                                    color = Color(0xFFE0E3DA), fontSize = 10.sp
-                                                )
                                             }
                                         }
                                         Spacer(Modifier.height(8.dp))
