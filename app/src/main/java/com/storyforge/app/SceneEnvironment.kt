@@ -30,14 +30,44 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
             val dark = if (foreground) Color(0xEE080B09) else Color(0xBB171D18)
             when (prop.type) {
                 "dead_tree" -> {
-                    drawLine(dark, Offset(x, y + unit * 1.6f), Offset(x - unit * 0.08f, y - unit * 1.8f), unit * 0.22f, cap = StrokeCap.Round)
-                    for (b in 0..3) {
-                        val by = y - unit * (0.45f + b * 0.38f)
-                        val dir = if (b % 2 == 0) -1f else 1f
-                        val sway = sin(motion * 2f * Math.PI.toFloat() + index * 0.7f + b) * unit * 0.07f
-                        drawLine(dark, Offset(x, by), Offset(x + dir * unit * (0.65f + b * 0.12f) + sway, by - unit * 0.55f), unit * 0.09f, cap = StrokeCap.Round)
+                    // Uneven trunk, exposed roots and broken branch forks create a less geometric silhouette.
+                    val trunk = Path().apply {
+                        moveTo(x - unit * 0.19f, y + unit * 1.55f)
+                        cubicTo(x - unit * 0.30f, y + unit * 0.75f, x - unit * 0.03f, y + unit * 0.10f, x - unit * 0.11f, y - unit * 0.55f)
+                        cubicTo(x - unit * 0.19f, y - unit * 1.12f, x + unit * 0.12f, y - unit * 1.48f, x + unit * 0.04f, y - unit * 1.92f)
+                        lineTo(x + unit * 0.25f, y - unit * 1.95f)
+                        cubicTo(x + unit * 0.22f, y - unit * 1.30f, x + unit * 0.09f, y - unit * 0.78f, x + unit * 0.19f, y - unit * 0.18f)
+                        cubicTo(x + unit * 0.28f, y + unit * 0.52f, x + unit * 0.12f, y + unit * 1.10f, x + unit * 0.22f, y + unit * 1.55f)
+                        close()
                     }
-                    drawLine(dark, Offset(x - unit * 0.1f, y + unit * 1.35f), Offset(x - unit * 0.72f, y + unit * 1.7f), unit * 0.11f)
+                    drawPath(trunk, dark)
+                    for (b in 0..3) {
+                        val by = y - unit * (0.40f + b * 0.38f)
+                        val dir = if (b % 2 == 0) -1f else 1f
+                        val sway = sin(motion * 2f * Math.PI.toFloat() + index * 0.7f + b) * unit * 0.045f
+                        val branch = Path().apply {
+                            moveTo(x + unit * 0.02f, by)
+                            cubicTo(x + dir * unit * 0.25f, by - unit * 0.10f, x + dir * unit * 0.40f + sway, by - unit * 0.34f, x + dir * unit * (0.72f + b * 0.10f) + sway, by - unit * 0.62f)
+                            lineTo(x + dir * unit * (0.65f + b * 0.10f) + sway, by - unit * 0.43f)
+                            cubicTo(x + dir * unit * 0.38f + sway, by - unit * 0.20f, x + dir * unit * 0.22f, by + unit * 0.04f, x + unit * 0.02f, by + unit * 0.12f)
+                            close()
+                        }
+                        drawPath(branch, dark)
+                        drawLine(Color(0xFF343A30).copy(alpha = 0.55f), Offset(x + dir * unit * 0.22f, by - unit * 0.10f), Offset(x + dir * unit * 0.58f + sway, by - unit * 0.47f), unit * 0.025f)
+                    }
+                    for (r in 0..2) {
+                        val rx = x + unit * (-0.08f + r * 0.07f)
+                        drawLine(Color(0xFF3A4034).copy(alpha = 0.48f), Offset(rx, y + unit * (0.35f + r * 0.18f)), Offset(rx - unit * 0.035f, y + unit * (0.62f + r * 0.18f)), unit * 0.025f)
+                    }
+                    val roots = listOf(
+                        Offset(x - unit * 0.10f, y + unit * 1.22f) to Offset(x - unit * 0.82f, y + unit * 1.72f),
+                        Offset(x + unit * 0.10f, y + unit * 1.28f) to Offset(x + unit * 0.72f, y + unit * 1.66f),
+                        Offset(x - unit * 0.02f, y + unit * 1.38f) to Offset(x - unit * 0.35f, y + unit * 1.88f)
+                    )
+                    roots.forEach { (a, b) ->
+                        val p = Path().apply { moveTo(a.x, a.y); cubicTo(a.x + (b.x-a.x)*0.28f, a.y + unit*0.12f, b.x-unit*0.10f, b.y-unit*0.12f, b.x, b.y) }
+                        drawPath(p, Color(0xFF111712), style = Stroke(width = unit*0.13f, cap = StrokeCap.Round))
+                    }
                 }
                 "stump" -> {
                     drawLine(dark, Offset(x, y), Offset(x, y + unit * 0.55f), unit * 0.42f, cap = StrokeCap.Round)
