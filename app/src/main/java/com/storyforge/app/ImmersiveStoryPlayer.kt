@@ -50,6 +50,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
     var callAnswered by remember { mutableStateOf(false) }
     var soundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var soundPlaying by remember { mutableStateOf(false) }
+    var musicEnabled by remember(project.id) { mutableStateOf(true) }
     var showGameIntro by remember(project.id) { mutableStateOf(true) }
     val scene = project.scenes.firstOrNull { it.id == sceneId }
     val ended = sceneId == "__END__" || scene == null
@@ -69,6 +70,10 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
             soundPlayer = null
             soundPlaying = false
         }
+    }
+    DisposableEffect(scene?.id, project.visualTheme, scene?.atmosphereEffects, musicEnabled) {
+        val score = if (musicEnabled && scene != null) AmbientScore.start(project.visualTheme, scene.atmosphereEffects) else null
+        onDispose { AmbientScore.stop(score) }
     }
     LaunchedEffect(scene?.id, fullText) {
         revealedChars = 0
@@ -123,20 +128,15 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = onExit) { Text("✕ خروج", color = Color.White) }
                     Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { musicEnabled = !musicEnabled }) {
+                        Text(if (musicEnabled) "♫" else "♪", color = if (musicEnabled) PlayerGold else Color.Gray, fontSize = 19.sp)
+                    }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("STORYFORGE • STORY MODE", color = PlayerBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         Text(project.title, color = PlayerGold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                 }
                 if (!ended && scene != null) {
-                    if (project.showSceneNumbers) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("المشهد " + (project.scenes.indexOf(scene) + 1) + " / " + project.scenes.size, color = Color.LightGray, fontSize = 11.sp)
-                        Text("◆ " + history.size + " خطوة", color = PlayerBlue, fontSize = 11.sp)
-                    }
-                    if (project.showSceneNumbers) LinearProgressIndicator(
-                        progress = { (project.scenes.indexOf(scene) + 1).toFloat() / project.scenes.size.coerceAtLeast(1) },
-                        modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(8.dp)),
-                        color = PlayerGold, trackColor = Color.White.copy(alpha = 0.14f))
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Bottom) {
                         Spacer(Modifier.height(90.dp))
                         Card(Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(20.dp)),

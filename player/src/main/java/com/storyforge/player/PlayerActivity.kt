@@ -238,6 +238,7 @@ class PlayerActivity : ComponentActivity() {
         }
         var audioPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
         var audioPlaying by remember { mutableStateOf(false) }
+        var musicEnabled by remember(game.projectId) { mutableStateOf(true) }
         val scene = game.scenes.firstOrNull { it.id == sceneId }
         var remainingSeconds by remember(sceneId) { mutableIntStateOf(scene?.choiceTimerSeconds ?: 0) }
         DisposableEffect(scene?.audio?.absolutePath) {
@@ -246,6 +247,10 @@ class PlayerActivity : ComponentActivity() {
                 audioPlayer = null
                 audioPlaying = false
             }
+        }
+        DisposableEffect(scene?.id, game.visualTheme, scene?.atmosphereEffects, musicEnabled) {
+            val score = if (musicEnabled && scene != null) AmbientScore.start(game.visualTheme, scene.atmosphereEffects) else null
+            onDispose { AmbientScore.stop(score) }
         }
         val ended = scene == null || sceneId == "__END__"
         LaunchedEffect(scene?.id) {
@@ -286,6 +291,9 @@ class PlayerActivity : ComponentActivity() {
                 Text("STORYFORGE PLAYER",color=Blue,fontSize=10.sp,fontWeight=FontWeight.Bold)
                 Text(game.title,color=Gold,fontSize=12.sp,maxLines=1)
             }
+            TextButton(onClick={musicEnabled=!musicEnabled}) {
+                Text(if (musicEnabled) "♫" else "♪", color = if (musicEnabled) Gold else Color.Gray, fontSize = 19.sp)
+            }
             if(intro) {
                 Spacer(Modifier.weight(1f))
                 game.cover?.takeIf { it.isFile }?.let { file ->
@@ -303,10 +311,6 @@ class PlayerActivity : ComponentActivity() {
                 Button(onClick={sceneId=game.scenes.firstOrNull()?.id;values=game.variables;progressPrefs.edit().remove(game.projectId).apply()},modifier=Modifier.fillMaxWidth()) { Text("إعادة اللعب من البداية") }
                 Spacer(Modifier.weight(1f))
             } else {
-                if (game.showSceneNumbers) {
-                    Text("المشهد " + (game.scenes.indexOf(scene!!) + 1) + " / " + game.scenes.size, color = Gold, fontSize = 11.sp)
-                    LinearProgressIndicator(progress={ (game.scenes.indexOf(scene!!)+1).toFloat()/game.scenes.size.coerceAtLeast(1) },modifier=Modifier.fillMaxWidth())
-                }
                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.Bottom) {
                     if (scene.image != null || scene.environmentProps.isNotEmpty() || scene.atmosphereEffects.isNotEmpty()) {
                         Box(Modifier.fillMaxWidth().height(230.dp)) {
