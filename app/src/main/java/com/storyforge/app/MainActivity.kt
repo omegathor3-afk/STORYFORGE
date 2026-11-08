@@ -642,6 +642,31 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
+                                        Spacer(Modifier.height(10.dp))
+                                        Text("معاينة حية للمؤثرات", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Box(
+                                            Modifier.fillMaxWidth().height(154.dp)
+                                                .clip(WeatheredShape)
+                                                .background(Color(0xFF0A100D))
+                                        ) {
+                                            AtmosphereOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            Column(
+                                                Modifier.align(Alignment.BottomStart).padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text("المشهد الآن", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    if (scene.atmosphereEffects.isEmpty()) "اختر مؤثرًا لتشاهد تغيّر الأجواء هنا"
+                                                    else "${scene.atmosphereEffects.size} طبقة جوية نشطة · ${(scene.atmosphereIntensity * 100).toInt()}٪",
+                                                    color = Color(0xFFE0E3DA), fontSize = 10.sp
+                                                )
+                                            }
+                                        }
                                         Spacer(Modifier.height(8.dp))
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("شدة الأجواء", color = Color(0xFFE0C58C), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
