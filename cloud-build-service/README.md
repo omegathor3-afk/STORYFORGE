@@ -48,3 +48,18 @@ Enable Authorization Code + PKCE (S256) and the `openid profile email` scopes. I
 The app packages the selected story, uploads it directly to a private R2 bucket with a short-lived presigned PUT URL, starts the GitHub build, and refreshes job status. The artifact endpoint returns a short-lived HTTPS download redirect; the app obtains that URL with the bearer token, then hands only the signed URL (never the bearer token) to Android Download Manager.
 
 The Android Studio now exports the `.storygame` archive into its private cache, uploads it directly to the configured private R2 bucket, and starts the build. No public story URL or external file-hosting step is required. The R2 bucket should remain private; the signed download URL expires after one hour and the upload URL after ten minutes. Configure lifecycle deletion for the `storygames/` prefix to remove old uploads.
+
+
+## Community API foundation
+
+The authenticated community API is implemented as a first backend milestone. It is **not live until this service is deployed and the community SQL schema is applied**.
+
+- `GET /api/community/feed?genre=all&limit=20&cursor=...`: newest-first, cursor-paginated public story feed.
+- `POST /api/community/feed`: publish a title, short post body, genre, and optional bounded story JSON.
+- `GET|POST /api/community/posts/:id/comments`: read and add comments.
+- `POST /api/community/posts/:id/reactions`: toggle like, love, or inspiring reaction.
+- `GET|POST /api/community/profile`: read or update the signed-in member profile.
+- `POST /api/community/follow`: follow or unfollow a member.
+- `POST /api/community/reports`: submit a safety or copyright report.
+
+Apply the expanded `db/schema.sql` before deploying. All community routes require the same verified OIDC bearer-token configuration as the build service. The app must never embed database, GitHub, or storage credentials. Before opening public registration, configure a moderation workflow, privacy policy, abuse-response owner, backups, and retention rules. The current API stores story JSON in PostgreSQL; production deployments should add object storage for larger media and virus/content scanning before accepting uploads.
