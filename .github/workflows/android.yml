@@ -156,12 +156,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: python3 scripts/capture_storyforge_screenshots.py
 
-      - name: Upload real app screenshots
+      - name: Upload real app screenshots and capture diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: STORYFORGE-REAL-APP-SCREENSHOTS
-          path: screenshots/*.png
-          if-no-files-found: error
+          path: screenshots/
+          if-no-files-found: warn
           retention-days: 90
 
       - name: Upload APK
