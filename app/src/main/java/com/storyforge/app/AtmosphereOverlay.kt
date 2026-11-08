@@ -319,6 +319,71 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 drawLine(Color(0xFF252A22).copy(alpha = 0.5f * strength), Offset(x, y - 3f), Offset(x, y + 4f), 1f, cap = StrokeCap.Round)
             }
         }
+        if ("lanterns" in active) {
+            // Old iron lanterns hang at different depths; their light breathes irregularly.
+            for (i in 0..3) {
+                val x = w * (0.16f + i * 0.225f) + sin((drift * 2f * PI + i * 1.7f).toFloat()) * w * 0.006f
+                val top = h * (0.13f + (i % 2) * 0.075f)
+                val lampY = top + h * 0.105f
+                val flicker = (0.48f + 0.20f * sin((breath * 2f * PI + i * 2.1f).toFloat()) +
+                    0.10f * sin((drift * 6f * PI + i).toFloat())).coerceIn(0.18f, 0.82f)
+                val glow = Color(0xFFD5A66A)
+                drawLine(Color(0xFF29251D).copy(alpha = 0.78f * strength), Offset(x, top), Offset(x, lampY - 7f), 1.3f)
+                drawCircle(Brush.radialGradient(
+                    listOf(glow.copy(alpha = flicker * 0.19f * strength), glow.copy(alpha = flicker * 0.055f * strength), Color.Transparent),
+                    center = Offset(x, lampY), radius = w * 0.085f
+                ), radius = w * 0.085f, center = Offset(x, lampY))
+                drawRoundRect(Color(0xFF25251F).copy(alpha = 0.94f * strength),
+                    topLeft = Offset(x - 5f, lampY - 7f), size = androidx.compose.ui.geometry.Size(10f, 15f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f))
+                drawRoundRect(glow.copy(alpha = flicker * 0.82f * strength),
+                    topLeft = Offset(x - 2.7f, lampY - 4f), size = androidx.compose.ui.geometry.Size(5.4f, 9f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.5f))
+                drawLine(Color(0xFF514332).copy(alpha = 0.9f * strength), Offset(x - 6f, lampY - 8f), Offset(x + 6f, lampY - 8f), 1.4f)
+                drawLine(Color(0xFF514332).copy(alpha = 0.9f * strength), Offset(x - 4f, lampY + 9f), Offset(x + 4f, lampY + 9f), 1.1f)
+            }
+        }
+        if ("pulsing_fungus" in active) {
+            // Uneven fungal clusters pulse softly, with dim spore halos rather than neon discs.
+            for (i in 0..6) {
+                val x = w * (0.09f + (i * 0.137f) % 0.84f)
+                val ground = h * (0.78f + (i % 3) * 0.055f)
+                val pulse = (0.5f + 0.5f * sin((breath * 2f * PI + i * 1.15f).toFloat())).coerceIn(0f, 1f)
+                val capColor = if (i % 3 == 0) Color(0xFF9A806A) else Color(0xFF788C69)
+                val halo = w * (0.025f + pulse * 0.012f)
+                drawCircle(Brush.radialGradient(
+                    listOf(capColor.copy(alpha = (0.08f + pulse * 0.09f) * strength), Color.Transparent),
+                    center = Offset(x, ground - 8f), radius = halo
+                ), radius = halo, center = Offset(x, ground - 8f))
+                drawLine(Color(0xFF555C43).copy(alpha = 0.68f * strength), Offset(x, ground), Offset(x + (i % 2 - 0.5f) * 3f, ground - 12f - (i % 3) * 3f), 2.2f)
+                val cap = Path().apply {
+                    moveTo(x - 8f - pulse * 1.5f, ground - 11f - (i % 3) * 3f)
+                    quadraticTo(x - 6f, ground - 22f - pulse * 2f, x, ground - 20f - pulse * 3f)
+                    quadraticTo(x + 7f, ground - 22f - pulse * 2f, x + 9f + pulse, ground - 11f - (i % 3) * 3f)
+                    quadraticTo(x, ground - 7f - (i % 3) * 2f, x - 8f - pulse * 1.5f, ground - 11f - (i % 3) * 3f)
+                    close()
+                }
+                drawPath(cap, capColor.copy(alpha = (0.52f + pulse * 0.22f) * strength))
+                drawCircle(Color(0xFFC4C99A).copy(alpha = pulse * 0.42f * strength), 1.1f, Offset(x - 3f, ground - 14f))
+                drawCircle(Color(0xFFC4C99A).copy(alpha = pulse * 0.34f * strength), 0.8f, Offset(x + 3f, ground - 12f))
+            }
+        }
+        if ("moving_shadows" in active) {
+            // Low, stretched silhouettes slide over the ground like something passing off-screen.
+            for (i in 0..3) {
+                val direction = if (i % 2 == 0) 1f else -1f
+                val travel = (drift * direction * 0.72f + i * 0.31f + 1.4f) % 1.4f
+                val x = (travel - 0.2f) * w
+                val y = h * (0.79f + (i % 2) * 0.075f)
+                val shadowWidth = w * (0.12f + (i % 3) * 0.035f)
+                val shadowHeight = h * 0.035f
+                drawOval(Brush.radialGradient(
+                    listOf(Color(0xFF020403).copy(alpha = 0.34f * strength), Color(0xFF020403).copy(alpha = 0.13f * strength), Color.Transparent),
+                    center = Offset(x, y), radius = shadowWidth
+                ), topLeft = Offset(x - shadowWidth, y - shadowHeight),
+                    size = androidx.compose.ui.geometry.Size(shadowWidth * 2f, shadowHeight * 2f))
+            }
+        }
         if ("black_shadows" in active) {
             for (i in 0..2) {
                 val x = ((drift * w * (if (i % 2 == 0) 0.16f else -0.12f) + i * w * 0.43f) % (w + 100f))
