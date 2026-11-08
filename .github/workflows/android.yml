@@ -34,12 +34,30 @@ jobs:
         run: |
           set -euo pipefail
           GRADLE_VERSION="8.9"
-          DIST_DIR="$RUNNER_TEMP/gradle-$GRADLE_VERSION"
           ZIP="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
-          mkdir -p "$DIST_DIR"
-          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 \
-            "https://downloads.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip" \
-            --output "$ZIP"
+          EXPECTED_SHA256="d725d707bfabd4dfdc958c624003b3c80accc03f7037b5122c4b1d0ef15cecab"
+          URLS=(
+            "https://mirrors.aliyun.com/gradle/distributions/v8.9.0/gradle-$GRADLE_VERSION-bin.zip"
+            "https://mirrors.huaweicloud.com/gradle/gradle-$GRADLE_VERSION-bin.zip"
+            "https://downloads.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+          )
+          downloaded=false
+          for url in "${URLS[@]}"; do
+            echo "Trying Gradle mirror: $url"
+            if curl --fail --location --retry 2 --retry-all-errors --retry-delay 3 "$url" --output "$ZIP"; then
+              actual_sha256="$(sha256sum "$ZIP" | awk '{print $1}')"
+              if [ "$actual_sha256" = "$EXPECTED_SHA256" ]; then
+                downloaded=true
+                break
+              fi
+              echo "Checksum mismatch from $url; trying next mirror."
+            fi
+            rm -f "$ZIP"
+          done
+          if [ "$downloaded" != true ]; then
+            echo "Could not download a verified Gradle $GRADLE_VERSION distribution."
+            exit 1
+          fi
           unzip -q "$ZIP" -d "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin/gradle" --version
