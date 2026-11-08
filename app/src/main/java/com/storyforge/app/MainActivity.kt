@@ -1302,6 +1302,24 @@ class MainActivity : ComponentActivity() {
                                 CommunityHub(
                                     apiBaseUrl = cloudApiBaseUrl,
                                     accessToken = cloudAccessToken,
+                                    projectJson = current?.let { encodeCommunityProject(it) },
+                                    onImportStory = { json ->
+                                        runCatching {
+                                            val imported = decodeProjects(json).firstOrNull() ?: error("القصة غير صالحة")
+                                            val copy = imported.copy(
+                                                id = UUID.randomUUID().toString(),
+                                                title = "${imported.title} (نسخة)",
+                                                assets = emptyList()
+                                            )
+                                            persist(projects + copy)
+                                            selectedId = copy.id
+                                            selectedSceneId = copy.scenes.firstOrNull()?.id
+                                            page = 1
+                                            Toast.makeText(this@MainActivity, "تم استيراد القصة إلى مكتبتك", Toast.LENGTH_LONG).show()
+                                        }.onFailure {
+                                            Toast.makeText(this@MainActivity, "تعذر استيراد القصة: ${it.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    },
                                     onOpenBuildCenter = { page = 4 }
                                 )
                             }
@@ -1906,6 +1924,8 @@ private fun decodeProjects(json: String): List<StoryProject> {
         )
     }
 }
+
+internal fun encodeCommunityProject(project: StoryProject): String = encodeProjects(listOf(project))
 
 private fun loadProjects(prefs: android.content.SharedPreferences): List<StoryProject> =
     runCatching { decodeProjects(prefs.getString("projects_json", "[]") ?: "[]") }.getOrDefault(emptyList())
