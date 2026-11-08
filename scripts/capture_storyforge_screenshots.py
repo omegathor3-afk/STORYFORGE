@@ -220,9 +220,9 @@ def main() -> None:
     require_visible("تركيبات أجواء جاهزة")
     require_tap("غابة ميتة")
     time.sleep(1)
-    captures.append(capture("02-studio-atmosphere-effects.png"))
-    scroll_to_text("معاينة حية للمؤثرات")
-    captures.append(capture("02b-studio-live-atmosphere-preview.png"))
+    # The live preview now sits above the long chip list, so it is visible
+    # in the same viewport as the selected preset and can be inspected directly.
+    captures.append(capture("02-studio-atmosphere-live-preview.png"))
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
     scroll_to_text("تخطيطات بيئية جاهزة")
