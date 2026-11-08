@@ -51,7 +51,8 @@ private data class CommunityPost(
     val author: String,
     val likes: Int,
     val comments: Int,
-    val liked: Boolean
+    val liked: Boolean,
+    val hasStory: Boolean
 )
 
 private data class CommunityComment(val id: String, val author: String, val body: String)
@@ -93,6 +94,8 @@ private suspend fun communityRequest(
 internal fun CommunityHub(
     apiBaseUrl: String,
     accessToken: String?,
+    projectJson: String?,
+    onImportStory: (String) -> Unit,
     onOpenBuildCenter: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -109,6 +112,7 @@ internal fun CommunityHub(
     var comments by remember { mutableStateOf<List<CommunityComment>>(emptyList()) }
     var commentsBusy by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("all") }
+    var attachCurrentStory by remember { mutableStateOf(true) }
 
     fun loadFeed(showSpinner: Boolean = true) {
         val token = accessToken ?: return
@@ -126,7 +130,8 @@ internal fun CommunityHub(
                         title = item.optString("title"), body = item.optString("body"),
                         genre = item.optString("genre"), author = item.optString("author_name", "كاتب"),
                         likes = item.optInt("likes_count"), comments = item.optInt("comments_count"),
-                        liked = item.optBoolean("liked")
+                        liked = item.optBoolean("liked"),
+                        hasStory = item.optBoolean("has_story")
                     )
                 }
                 posts.clear()
@@ -207,11 +212,20 @@ internal fun CommunityHub(
                             Text(label, color = if (genre == key) CommunityGold else CommunityMuted, modifier = Modifier.clickable { genre = key }.padding(5.dp), fontSize = 11.sp)
                         }
                     }
+                    if (!projectJson.isNullOrBlank()) {
+                        TextButton(onClick = { attachCurrentStory = !attachCurrentStory }) {
+                            Text(if (attachCurrentStory) "✓ إرفاق المشروع الحالي" else "＋ إرفاق المشروع الحالي",
+                                color = CommunityGreen)
+                        }
+                    }
                     Button(onClick = {
                         scope.launch {
                             runCatching {
-                                communityRequest(apiBaseUrl, accessToken, "/api/community/feed", "POST",
-                                    JSONObject().put("title", title.trim()).put("body", body.trim()).put("genre", genre))
+                                val payload = JSONObject().put("title", title.trim()).put("body", body.trim()).put("genre", genre)
+                                if (attachCurrentStory && !projectJson.isNullOrBlank()) {
+                                    payload.put("story", JSONArray(projectJson).optJSONObject(0))
+                                }
+                                communityRequest(apiBaseUrl, accessToken, "/api/community/feed", "POST", payload)
                                 title = ""; body = ""; message = "تم نشر منشورك في المجتمع."; loadFeed(false)
                             }.onFailure { message = it.message ?: "تعذر النشر." }
                         }
@@ -238,6 +252,19 @@ internal fun CommunityHub(
                         }
                         Text(post.title, color = CommunityGold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         if (post.body.isNotBlank()) Text(post.body, color = Color(0xFFE8E4DC), fontSize = 13.sp)
+                        if (post.hasStory) {
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    runCatching {
+                                        val detail = communityRequest(apiBaseUrl, accessToken, "/api/community/posts/${post.id}")
+                                        val story = detail.optJSONObject("post")?.optJSONObject("story_json")
+                                            ?: error("المنشور لا يحتوي على ملف قصة صالح.")
+                                        onImportStory(JSONArray().put(story).toString())
+                                        message = "تم استيراد نسخة من القصة إلى المكتبة."
+                                    }.onFailure { message = it.message ?: "تعذر تنزيل القصة." }
+                                }
+                            }, modifier = Modifier.fillMaxWidth()) { Text("↓ استيراد القصة إلى مكتبتي") }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = {
                                 scope.launch {
