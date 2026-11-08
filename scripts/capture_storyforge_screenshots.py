@@ -178,6 +178,11 @@ def main() -> None:
     else:
         raise RuntimeError("Android emulator did not finish booting")
 
+    # Google Messages can become unresponsive in headless emulator sessions and
+    # raise a system ANR dialog over the app, blocking UI automation. It is not
+    # required by STORYFORGE, so disable it for this isolated screenshot run.
+    adb("shell", "pm", "disable-user", "--user", "0", "com.google.android.apps.messaging", check=False)
+
     adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
     # A clean app data set makes the screenshots deterministic on every CI run.
     adb("shell", "pm", "clear", "com.storyforge.app")
@@ -199,7 +204,15 @@ def main() -> None:
     type_ascii("A haunted village where every bell toll erases one memory.")
     # Hide the software keyboard before tapping the dialog confirmation button.
     adb("shell", "input", "keyevent", "4")
-    time.sleep(0.8)
+    time.sleep(1.5)
+    # Recover if Android surfaces a transient system ANR dialog above the app.
+    for _ in range(3):
+        system_ui = visible_text()
+        if "isn't responding" not in system_ui and "لا يستجيب" not in system_ui:
+            break
+        if not (tap_text("Wait") or tap_text("انتظار")):
+            raise RuntimeError(f"System ANR dialog blocked project creation: {system_ui[:1000]}")
+        time.sleep(2)
     require_tap("إنشاء")
     time.sleep(2)
     current_ui = visible_text()
