@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Capture repeatable, real screenshots of STORYFORGE's five main sections on an Android emulator."""
+"""Capture meaningful, repeatable STORYFORGE screens using a real Android emulator."""
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import subprocess
 import time
@@ -9,6 +11,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 OUT = Path("screenshots")
+DIAG = OUT / "diagnostics"
 OUT.mkdir(exist_ok=True)
 
 
@@ -31,12 +34,24 @@ def dimensions() -> tuple[int, int, float]:
 
 def hierarchy() -> ET.Element | None:
     adb("shell", "uiautomator", "dump", "/sdcard/storyforge-window.xml", check=False)
-    subprocess.run(["adb", "pull", "/sdcard/storyforge-window.xml", "/tmp/storyforge-window.xml"],
-                   capture_output=True, text=True)
+    subprocess.run(
+        ["adb", "pull", "/sdcard/storyforge-window.xml", "/tmp/storyforge-window.xml"],
+        capture_output=True, text=True
+    )
     try:
         return ET.parse("/tmp/storyforge-window.xml").getroot()
     except (ET.ParseError, OSError):
         return None
+
+
+def visible_text() -> str:
+    root = hierarchy()
+    if root is None:
+        return ""
+    return " ".join(
+        (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
+        for node in root.iter("node")
+    )
 
 
 def tap_text(label: str, contains: bool = False) -> bool:
@@ -55,7 +70,25 @@ def tap_text(label: str, contains: bool = False) -> bool:
         return False
     _, x, y = max(matches)
     adb("shell", "input", "tap", str(x), str(y))
+    time.sleep(0.6)
     return True
+
+
+def require_tap(label: str, contains: bool = False) -> None:
+    if not tap_text(label, contains):
+        raise RuntimeError(f"Required UI control was not found: {label}")
+
+
+def type_ascii(value: str) -> None:
+    # Android's shell input accepts spaces as %s; use ASCII-only fixture content.
+    adb("shell", "input", "text", value.replace(" ", "%s"))
+    time.sleep(0.4)
+
+
+def require_visible(label: str) -> None:
+    text = visible_text()
+    if label not in text:
+        raise RuntimeError(f"Expected UI text is not visible: {label!r}. Current UI: {text[:1200]}")
 
 
 def tap_bottom_tab(label: str, index: int) -> None:
@@ -67,7 +100,7 @@ def tap_bottom_tab(label: str, index: int) -> None:
     time.sleep(2)
 
 
-def capture(filename: str) -> None:
+def capture(filename: str) -> dict:
     remote = f"/sdcard/{filename}"
     adb("shell", "screencap", "-p", remote)
     local = OUT / filename
@@ -76,45 +109,114 @@ def capture(filename: str) -> None:
     if len(data) < 4096 or not data.startswith(b"\x89PNG\r\n\x1a\n"):
         raise RuntimeError(f"Screenshot is missing or invalid: {local}")
     print(f"Captured {local} ({len(data)} bytes)")
+    return {
+        "file": filename,
+        "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
 
 
-adb("wait-for-device")
-deadline = time.time() + 180
-while time.time() < deadline:
-    if adb("shell", "getprop", "sys.boot_completed") == "1":
-        break
-    time.sleep(2)
-else:
-    raise RuntimeError("Android emulator did not finish booting")
+def save_diagnostics() -> None:
+    DIAG.mkdir(parents=True, exist_ok=True)
+    try:
+        adb("shell", "uiautomator", "dump", "/sdcard/storyforge-window.xml", check=False)
+        subprocess.run(
+            ["adb", "pull", "/sdcard/storyforge-window.xml", str(DIAG / "window.xml")],
+            capture_output=True, text=True
+        )
+    except Exception:
+        pass
+    try:
+        (DIAG / "logcat.txt").write_text(
+            adb("logcat", "-d", "-t", "5000", check=False), encoding="utf-8"
+        )
+    except Exception:
+        pass
+    try:
+        adb("shell", "screencap", "-p", "/sdcard/storyforge-failure.png", check=False)
+        subprocess.run(
+            ["adb", "pull", "/sdcard/storyforge-failure.png", str(DIAG / "failure-screen.png")],
+            capture_output=True, text=True
+        )
+    except Exception:
+        pass
 
-adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
-adb("shell", "am", "force-stop", "com.storyforge.app")
-adb("shell", "monkey", "-p", "com.storyforge.app", "-c",
-    "android.intent.category.LAUNCHER", "1")
-time.sleep(8)
 
-# Keep the opening/brand screen as evidence, then dismiss it for the app sections.
-capture("00-brand-intro.png")
-for _ in range(3):
-    if tap_text("ابدأ", contains=True) or tap_text("متابعة", contains=True) or tap_text("دخول", contains=True):
+def main() -> None:
+    adb("wait-for-device")
+    deadline = time.time() + 180
+    while time.time() < deadline:
+        if adb("shell", "getprop", "sys.boot_completed") == "1":
+            break
         time.sleep(2)
     else:
-        width, height, density = dimensions()
-        adb("shell", "input", "tap", str(width // 2), str(height - round(90 * density)))
-        time.sleep(2)
-    root = hierarchy()
-    visible = " ".join(n.attrib.get("text", "") for n in root.iter("node")) if root is not None else ""
-    if not any(word in visible for word in ("ابدأ", "متابعة", "دخول")):
-        break
+        raise RuntimeError("Android emulator did not finish booting")
 
-capture("01-library.png")
-for index, (label, filename) in enumerate([
-    ("الاستوديو", "02-studio.png"),
-    ("المعاينة", "03-preview.png"),
-    ("التعلّم", "04-learning.png"),
-    ("بناء APK", "05-build-apk.png"),
-], start=1):
-    tap_bottom_tab(label, index)
-    capture(filename)
+    adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
+    # A clean app data set makes the screenshots deterministic on every CI run.
+    adb("shell", "pm", "clear", "com.storyforge.app")
+    adb("shell", "am", "force-stop", "com.storyforge.app")
+    adb("shell", "monkey", "-p", "com.storyforge.app", "-c",
+        "android.intent.category.LAUNCHER", "1")
+    time.sleep(8)
 
-print("All six real emulator screenshots captured and validated.")
+    captures = []
+    require_visible("مكتبة القصص")
+    captures.append(capture("00-library-empty.png"))
+
+    # Create a real sample project through the same UI a new user sees.
+    require_tap("إنشاء مشروع جديد", contains=True)
+    require_visible("مشروع جديد")
+    require_tap("اسم القصة", contains=True)
+    type_ascii("The Ashen Bell")
+    require_tap("وصف مختصر", contains=True)
+    type_ascii("A haunted village where every bell toll erases one memory.")
+    require_tap("إنشاء")
+    time.sleep(3)
+    require_visible("The Ashen Bell")
+
+    # Library now contains a real generated starter story, not an empty placeholder.
+    tap_bottom_tab("المكتبة", 0)
+    require_visible("The Ashen Bell")
+    captures.append(capture("01-library-project.png"))
+
+    tap_bottom_tab("الاستوديو", 1)
+    require_visible("The Ashen Bell")
+    captures.append(capture("02-studio-project.png"))
+
+    tap_bottom_tab("المعاينة", 2)
+    time.sleep(2)
+    captures.append(capture("03-story-preview.png"))
+
+    tap_bottom_tab("التعلّم", 3)
+    require_visible("أكاديمية STORYFORGE")
+    captures.append(capture("04-learning-academy.png"))
+
+    tap_bottom_tab("بناء APK", 4)
+    require_visible("مركز بناء الألعاب")
+    captures.append(capture("05-build-center.png"))
+
+    manifest = {
+        "application": "STORYFORGE",
+        "capture_method": "Android emulator + adb screencap",
+        "emulator": {
+            "size": adb("shell", "wm", "size"),
+            "density": adb("shell", "wm", "density"),
+            "android_release": adb("shell", "getprop", "ro.build.version.release"),
+            "sdk": adb("shell", "getprop", "ro.build.version.sdk"),
+        },
+        "fixture_project": "The Ashen Bell",
+        "screenshots": captures,
+    }
+    (OUT / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(f"Captured and verified {len(captures)} meaningful real app screenshots.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        save_diagnostics()
+        raise
