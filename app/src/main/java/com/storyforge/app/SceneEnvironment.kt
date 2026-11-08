@@ -84,7 +84,7 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                     drawLine(Color(0xFF756044),Offset(x+unit*0.4f,y-unit*0.4f),Offset(x-unit*0.4f,y+unit*0.3f),unit*0.07f)
                 }
                 "grave" -> {
-                    drawRect(Color(0xFF55564D), Offset(x-unit*0.34f,y-unit*0.7f), androidx.compose.ui.geometry.Size(unit*0.68f,unit*0.9f), androidx.compose.ui.geometry.CornerRadius(unit*0.18f))
+                    drawRoundRect(Color(0xFF55564D), Offset(x-unit*0.34f,y-unit*0.7f), androidx.compose.ui.geometry.Size(unit*0.68f,unit*0.9f), androidx.compose.ui.geometry.CornerRadius(unit*0.18f))
                     drawLine(Color(0xFF242820),Offset(x,y-unit*0.48f),Offset(x,y+unit*0.02f),unit*0.07f)
                     drawLine(Color(0xFF242820),Offset(x-unit*0.16f,y-unit*0.32f),Offset(x+unit*0.16f,y-unit*0.32f),unit*0.07f)
                 }
