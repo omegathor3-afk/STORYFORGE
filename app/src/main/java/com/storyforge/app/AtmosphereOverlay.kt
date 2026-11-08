@@ -151,6 +151,42 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 }
             }
         }
+        if ("distant_forest" in active) {
+            // Layered, uneven treelines create real depth behind the foreground scene.
+            for (layer in 0..2) {
+                val baseline = h * (0.52f + layer * 0.105f)
+                val silhouette = Path().apply {
+                    moveTo(0f, baseline)
+                    for (tree in 0..18) {
+                        val x = w * tree / 18f
+                        val heightFactor = 0.035f + ((tree * 7 + layer * 3) % 6) * 0.014f
+                        val peak = baseline - h * heightFactor
+                        lineTo(x - w * 0.012f, baseline)
+                        lineTo(x, peak)
+                        lineTo(x + w * 0.014f, baseline)
+                    }
+                    lineTo(w, h)
+                    lineTo(0f, h)
+                    close()
+                }
+                val shade = if (layer == 0) Color(0xFF25352D) else Color(0xFF17231D)
+                drawPath(silhouette, shade.copy(alpha = (0.20f + layer * 0.12f) * strength))
+            }
+        }
+        if ("wind" in active && "rain" !in active && "heavy_rain" !in active) {
+            // Wind remains visible as soft, broken gusts even when rain is disabled.
+            for (i in 0..5) {
+                val phase = (drift * (0.72f + i * 0.035f) + i * 0.19f) % 1.2f
+                val x = (phase - 0.12f) * w
+                val y = h * (0.27f + i * 0.105f) + sin((drift * 2f * PI + i).toFloat()) * h * 0.012f
+                val gust = Path().apply {
+                    moveTo(x, y)
+                    cubicTo(x + w * 0.055f, y - h * 0.009f, x + w * 0.13f, y + h * 0.008f, x + w * 0.22f, y - h * 0.003f)
+                }
+                drawPath(gust, Color(0xFFB3C0B7).copy(alpha = 0.10f * strength),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f, cap = StrokeCap.Round))
+            }
+        }
         if ("dead_leaves" in active) {
             for (i in 0..11) {
                 val x = (i * w * 0.113f + sin((drift * 2f * PI + i * 2.4f).toFloat()) * w * 0.025f + drift * w * 0.11f) % w
