@@ -139,6 +139,13 @@ internal fun CommunityHub(
 
     LaunchedEffect(apiBaseUrl, accessToken, selectedFilter) {
         if (!accessToken.isNullOrBlank() && apiBaseUrl.isNotBlank()) {
+            runCatching {
+                val profile = communityRequest(apiBaseUrl, accessToken, "/api/community/profile").optJSONObject("profile")
+                if (profile != null) {
+                    profileName = profile.optString("display_name")
+                    profileBio = profile.optString("bio")
+                }
+            }
             loadFeed()
             while (true) {
                 delay(30000)
