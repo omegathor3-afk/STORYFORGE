@@ -151,28 +151,6 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 }
             }
         }
-        if ("distant_forest" in active) {
-            // Layered, uneven treelines create real depth behind the foreground scene.
-            for (layer in 0..2) {
-                val baseline = h * (0.52f + layer * 0.105f)
-                val silhouette = Path().apply {
-                    moveTo(0f, baseline)
-                    for (tree in 0..18) {
-                        val x = w * tree / 18f
-                        val heightFactor = 0.035f + ((tree * 7 + layer * 3) % 6) * 0.014f
-                        val peak = baseline - h * heightFactor
-                        lineTo(x - w * 0.012f, baseline)
-                        lineTo(x, peak)
-                        lineTo(x + w * 0.014f, baseline)
-                    }
-                    lineTo(w, h)
-                    lineTo(0f, h)
-                    close()
-                }
-                val shade = if (layer == 0) Color(0xFF25352D) else Color(0xFF17231D)
-                drawPath(silhouette, shade.copy(alpha = (0.20f + layer * 0.12f) * strength))
-            }
-        }
         if ("wind" in active && "rain" !in active && "heavy_rain" !in active) {
             // Wind remains visible as soft, broken gusts even when rain is disabled.
             for (i in 0..5) {
