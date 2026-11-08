@@ -70,6 +70,92 @@ internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean
                         drawPath(p,Color(0xFF111712),style=Stroke(width=u*0.13f,cap=StrokeCap.Round))
                     }
                 }
+                "stump" -> {
+                    drawLine(Color(0xFF292D25),Offset(x-u*0.22f,y+u*0.48f),Offset(x-u*0.17f,y-u*0.05f),u*0.34f,cap=StrokeCap.Round)
+                    drawLine(Color(0xFF292D25),Offset(x+u*0.18f,y+u*0.48f),Offset(x+u*0.16f,y-u*0.05f),u*0.34f,cap=StrokeCap.Round)
+                    drawOval(Color(0xFF625943),Offset(x-u*0.23f,y-u*0.14f),Size(u*0.46f,u*0.20f))
+                    drawOval(Color(0xFF292D25),Offset(x-u*0.13f,y-u*0.095f),Size(u*0.26f,u*0.10f),style=Stroke(width=u*0.025f))
+                    for(k in 0..2) drawLine(Color(0xFF8A7650).copy(alpha=0.42f),Offset(x-u*(0.14f-k*0.04f),y+u*0.10f),Offset(x-u*(0.18f-k*0.03f),y+u*0.36f),u*0.022f)
+                }
+                "rocks" -> {
+                    val stone=Path().apply{moveTo(x-u*0.66f,y+u*0.02f);lineTo(x-u*0.48f,y-u*0.42f);lineTo(x-u*0.12f,y-u*0.70f);lineTo(x+u*0.34f,y-u*0.60f);lineTo(x+u*0.68f,y-u*0.18f);lineTo(x+u*0.56f,y+u*0.08f);close()}
+                    drawPath(stone,Color(0xFF303832))
+                    val face=Path().apply{moveTo(x-u*0.48f,y-u*0.42f);lineTo(x-u*0.12f,y-u*0.70f);lineTo(x+u*0.08f,y-u*0.16f);lineTo(x-u*0.34f,y-u*0.04f);close()}
+                    drawPath(face,Color(0xFF465047).copy(alpha=0.48f))
+                    drawLine(Color(0xFF171D19),Offset(x+u*0.10f,y-u*0.13f),Offset(x+u*0.28f,y+u*0.02f),u*0.035f)
+                    drawLine(Color(0xFF697064).copy(alpha=0.45f),Offset(x-u*0.38f,y-u*0.34f),Offset(x-u*0.12f,y-u*0.55f),u*0.025f)
+                }forge.player
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.sin
+
+@Composable
+internal fun SceneEnvironmentOverlay(props: List<SceneProp>, foreground: Boolean, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "environment-motion")
+    val motion by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(6200, easing = LinearEasing), RepeatMode.Restart), label = "prop-motion")
+    Canvas(modifier.fillMaxSize()) {
+        props.filter { it.foreground == foreground }.forEachIndexed { index, prop ->
+            val x=size.width*prop.x.coerceIn(0f,1f); val y=size.height*prop.y.coerceIn(0f,1f)
+            val u=(size.width*0.12f*prop.scale.coerceIn(0.4f,2.2f)).coerceAtLeast(12f)
+            val dark=if(foreground) Color(0xEE080B09) else Color(0xBB171D18)
+            when(prop.type) {
+                "dead_tree" -> {
+                    // Uneven trunk, exposed roots and broken branch forks create a less geometric silhouette.
+                    val trunk = Path().apply {
+                        moveTo(x-u*0.19f,y+u*1.55f)
+                        cubicTo(x-u*0.30f,y+u*0.75f,x-u*0.03f,y+u*0.10f,x-u*0.11f,y-u*0.55f)
+                        cubicTo(x-u*0.19f,y-u*1.12f,x+u*0.12f,y-u*1.48f,x+u*0.04f,y-u*1.92f)
+                        lineTo(x+u*0.25f,y-u*1.95f)
+                        cubicTo(x+u*0.22f,y-u*1.30f,x+u*0.09f,y-u*0.78f,x+u*0.19f,y-u*0.18f)
+                        cubicTo(x+u*0.28f,y+u*0.52f,x+u*0.12f,y+u*1.10f,x+u*0.22f,y+u*1.55f)
+                        close()
+                    }
+                    drawPath(trunk, dark)
+                    for (b in 0..3) {
+                        val by=y-u*(0.40f+b*0.38f); val dir=if(b%2==0)-1f else 1f
+                        val sway=sin(motion*2f*Math.PI.toFloat()+index*0.7f+b)*u*0.045f
+                        val branch=Path().apply {
+                            moveTo(x+u*0.02f,by)
+                            cubicTo(x+dir*u*0.25f,by-u*0.10f,x+dir*u*0.40f+sway,by-u*0.34f,x+dir*u*(0.72f+b*0.10f)+sway,by-u*0.62f)
+                            lineTo(x+dir*u*(0.65f+b*0.10f)+sway,by-u*0.43f)
+                            cubicTo(x+dir*u*0.38f+sway,by-u*0.20f,x+dir*u*0.22f,by+u*0.04f,x+u*0.02f,by+u*0.12f)
+                            close()
+                        }
+                        drawPath(branch,dark)
+                        drawLine(Color(0xFF343A30).copy(alpha=0.55f),Offset(x+dir*u*0.22f,by-u*0.10f),Offset(x+dir*u*0.58f+sway,by-u*0.47f),u*0.025f)
+                    }
+                    // Fine bark scars and roots remain subtle at small screen sizes.
+                    for (r in 0..2) {
+                        val rx=x+u*(-0.08f+r*0.07f)
+                        drawLine(Color(0xFF3A4034).copy(alpha=0.48f),Offset(rx,y+u*(0.35f+r*0.18f)),Offset(rx-u*0.035f,y+u*(0.62f+r*0.18f)),u*0.025f)
+                    }
+                    val roots= listOf(
+                        Offset(x-u*0.10f,y+u*1.22f) to Offset(x-u*0.82f,y+u*1.72f),
+                        Offset(x+u*0.10f,y+u*1.28f) to Offset(x+u*0.72f,y+u*1.66f),
+                        Offset(x-u*0.02f,y+u*1.38f) to Offset(x-u*0.35f,y+u*1.88f)
+                    )
+                    roots.forEach { (a,b) ->
+                        val p=Path().apply { moveTo(a.x,a.y); cubicTo(a.x+(b.x-a.x)*0.28f,a.y+u*0.12f,b.x-u*0.10f,b.y-u*0.12f,b.x,b.y) }
+                        drawPath(p,Color(0xFF111712),style=Stroke(width=u*0.13f,cap=StrokeCap.Round))
+                    }
+                }
                 "stump" -> { drawLine(dark,Offset(x,y),Offset(x,y+u*0.55f),u*0.42f,cap=StrokeCap.Round);drawOval(Color(0xFF514B3C),Offset(x-u*0.22f,y-u*0.1f),Size(u*0.44f,u*0.18f)) }
                 "rocks" -> { val path=Path().apply{moveTo(x-u*0.65f,y);lineTo(x-u*0.4f,y-u*0.55f);lineTo(x+u*0.15f,y-u*0.7f);lineTo(x+u*0.68f,y-u*0.15f);lineTo(x+u*0.55f,y+u*0.05f);close()};drawPath(path,Color(0xFF303832)) }
                 "fungus" -> { drawLine(Color(0xFF536344),Offset(x,y),Offset(x,y-u*0.6f),u*0.1f);drawCircle(Color(0xFF9EBD72).copy(alpha=0.45f),u*0.34f,Offset(x,y-u*0.68f));drawCircle(Color(0xFFBDD98A),u*0.12f,Offset(x,y-u*0.68f)) }
