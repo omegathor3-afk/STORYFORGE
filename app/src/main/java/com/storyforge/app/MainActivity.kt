@@ -629,7 +629,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         Text("تركيبات أجواء جاهزة", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         val atmospherePresets = listOf(
-                                            "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "vignette"),
+                                            "غابة ميتة" to setOf("dead_forest", "distant_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "wind", "vignette"),
                                             "مطر المطاردة" to setOf("heavy_rain", "rain", "fog", "ground_fog", "black_shadows", "lightning", "crows", "vignette"),
                                             "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow", "insects", "pulsing_fungus"),
                                             "ليلة القمر" to setOf("moon_glow", "light_shafts", "fireflies", "watching_eyes", "fog", "vignette"),
