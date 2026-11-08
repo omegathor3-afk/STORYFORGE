@@ -111,6 +111,31 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK"
           cp "$APK" player/build/outputs/apk/release/player-standalone-ci-release.apk
 
+      - name: Capture real app screenshot on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          script: |
+            set -euo pipefail
+            mkdir -p screenshots
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop com.storyforge.app || true
+            adb shell monkey -p com.storyforge.app -c android.intent.category.LAUNCHER 1
+            sleep 18
+            adb shell screencap -p /sdcard/storyforge-home.png
+            adb pull /sdcard/storyforge-home.png screenshots/storyforge-home.png
+            test -s screenshots/storyforge-home.png
+
+      - name: Upload real app screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: STORYFORGE-REAL-APP-SCREENSHOTS
+          path: screenshots/*.png
+          if-no-files-found: error
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
