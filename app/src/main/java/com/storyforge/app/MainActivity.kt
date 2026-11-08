@@ -294,11 +294,18 @@ class MainActivity : ComponentActivity() {
                     project.description.contains(librarySearch.trim(), ignoreCase = true)
             }
 
-            MaterialTheme(colorScheme = darkColorScheme(
-                primary = Gold, secondary = Color(0xFF8CBAA5),
-                background = Ink, surface = Panel, onBackground = Color.White,
-                onSurface = Color(0xFFE8E4DC)
-            )) {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Gold, secondary = Color(0xFF8CBAA5),
+                    background = Ink, surface = Panel, onBackground = Color.White,
+                    onSurface = Color(0xFFE8E4DC)
+                ),
+                shapes = androidx.compose.material3.Shapes(
+                    small = WeatheredShape,
+                    medium = WeatheredShape,
+                    large = WeatheredShape
+                )
+            ) {
                 if (showBrandIntro) androidx.compose.ui.window.Dialog(onDismissRequest = {}, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
                     StoryForgeIntro(onFinished = { showBrandIntro = false })
                 }
@@ -323,7 +330,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { padding ->
                     Column(
-                        Modifier.fillMaxSize().padding(padding).background(Ink)
+                        Modifier.fillMaxSize().padding(padding).storyforgeBackdrop()
                             .verticalScroll(rememberScrollState()).padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
@@ -364,7 +371,7 @@ class MainActivity : ComponentActivity() {
                                             page = 1
                                         },
                                         colors = CardDefaults.cardColors(containerColor = Panel),
-                                        shape = RoundedCornerShape(18.dp)
+                                        shape = WeatheredShape
                                     ) {
                                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             Text(project.title, color = Gold, fontSize = 19.sp, fontWeight = FontWeight.Bold)
@@ -401,7 +408,7 @@ class MainActivity : ComponentActivity() {
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = CardDefaults.cardColors(containerColor = Panel),
-                                        shape = RoundedCornerShape(14.dp)
+                                        shape = WeatheredShape
                                     ) {
                                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
@@ -526,7 +533,7 @@ class MainActivity : ComponentActivity() {
                                                 if (selectedSceneId == graphScene.id) 1.5.dp else 0.5.dp,
                                                 if (selectedSceneId == graphScene.id) Gold else Color(0xFF343B43)
                                             ),
-                                            shape = RoundedCornerShape(14.dp)
+                                            shape = WeatheredShape
                                         ) {
                                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -720,7 +727,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         if (scene.environmentProps.isEmpty()) Text("المشهد لسه فاضي من عناصر البيئة. أضف أول عنصر من القائمة.", color = Muted, fontSize = 11.sp)
                                         scene.environmentProps.forEachIndexed { propIndex, prop ->
-                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(12.dp)) {
+                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = WeatheredShape) {
                                                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                                         Text("${propIndex + 1}. " + (propOptions.firstOrNull { it.first == prop.type }?.second ?: prop.type), color = Gold, modifier = Modifier.weight(1f), fontSize = 12.sp)
@@ -772,7 +779,7 @@ class MainActivity : ComponentActivity() {
                                             color = Muted, fontSize = 11.sp)
                                         if (scene.dialogues.isEmpty()) Text("لا توجد حوارات في هذا المشهد بعد.", color = Muted, fontSize = 12.sp)
                                         scene.dialogues.forEachIndexed { dialogueIndex, line ->
-                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(12.dp)) {
+                                            Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = WeatheredShape) {
                                                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                                         Text("سطر ${dialogueIndex + 1}", color = Gold, modifier = Modifier.weight(1f))
@@ -996,7 +1003,7 @@ class MainActivity : ComponentActivity() {
                                     val previewScene = current.scenes[safeIndex]
                                     if (previewSceneId == "__END__") {
                                         EmptyPanel("انتهت القصة", "وصل اللاعب إلى نهاية هذا المسار.")
-                                    } else Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+                                    } else Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = WeatheredShape) {
                                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             Text("المشهد ${safeIndex + 1} / ${current.scenes.size}", color = Gold, fontSize = 12.sp)
                                             if (current.variables.isNotEmpty()) Text(
@@ -1385,7 +1392,7 @@ private fun AudioPreviewCard(title: String, filePath: String) {
         }
     }
 
-    Card(colors = CardDefaults.cardColors(containerColor = Ink), shape = RoundedCornerShape(12.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Ink), shape = WeatheredShape) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1477,7 +1484,7 @@ private fun FieldLabel(value: String) {
 
 @Composable
 private fun EmptyPanel(title: String, subtitle: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = WeatheredShape) {
         Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("✦", color = Gold, fontSize = 30.sp)

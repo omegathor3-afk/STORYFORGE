@@ -195,8 +195,15 @@ class PlayerActivity : ComponentActivity() {
                 errorMessage = null
             }.onFailure { errorMessage = it.message ?: "تعذر فتح اللعبة" }
         }
-        MaterialTheme(colorScheme = darkColorScheme(primary=Gold,background=Night,surface=Color(0xFF151A23))) {
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101B2A),Night)))) {
+        MaterialTheme(
+            colorScheme = darkColorScheme(primary=Gold,background=Night,surface=Color(0xFF151A23)),
+            shapes = androidx.compose.material3.Shapes(
+                small = PlayerWeatheredShape,
+                medium = PlayerWeatheredShape,
+                large = PlayerWeatheredShape
+            )
+        ) {
+            Box(Modifier.fillMaxSize().playerBackdrop()) {
                 if (game == null) {
                     Column(Modifier.fillMaxSize().padding(26.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
                         Text("✦",color=Gold,fontSize=54.sp)
@@ -325,11 +332,16 @@ class PlayerActivity : ComponentActivity() {
                             SceneDepthOverlay(effects=scene.atmosphereEffects,theme=game.visualTheme,layer="near",intensity=scene.atmosphereIntensity,modifier=Modifier.fillMaxSize())
                         }
                     }
-                    Text(scene!!.title,color=Gold,fontSize=23.sp,fontWeight=FontWeight.Bold)
-                    Text(scene.text.take(revealed),color=Color.White,fontSize=16.sp,lineHeight=27.sp,modifier=Modifier.clickable{revealed=scene.text.length})
-                    scene.speakerLines.forEach { (speaker,line) ->
-                        Column(Modifier.fillMaxWidth().padding(top=8.dp).background(Color(0xFF202B38),RoundedCornerShape(12.dp)).padding(12.dp)) {
-                            Text(speaker,color=Gold,fontWeight=FontWeight.Bold); Text(line,color=Color.White)
+                    Column(
+                        Modifier.fillMaxWidth().playerWeatheredSurface().padding(17.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(scene!!.title,color=Gold,fontSize=23.sp,fontWeight=FontWeight.Bold)
+                        Text(scene.text.take(revealed),color=Color(0xFFE7E8DF),fontSize=16.sp,lineHeight=27.sp,modifier=Modifier.clickable{revealed=scene.text.length})
+                        scene.speakerLines.forEach { (speaker,line) ->
+                            Column(Modifier.fillMaxWidth().playerWeatheredSurface().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(speaker,color=Gold,fontWeight=FontWeight.Bold); Text(line,color=Color.White)
+                            }
                         }
                     }
                     scene.audio?.let { audioFile ->
@@ -362,7 +374,12 @@ class PlayerActivity : ComponentActivity() {
                             Button(onClick={sceneId=game.scenes.getOrNull(game.scenes.indexOf(scene)+1)?.id ?: "__END__"},modifier=Modifier.fillMaxWidth()) { Text("متابعة") }
                         } else available.forEach { choice ->
                             AnimatedVisibility(true,enter=fadeIn()+slideInVertically { it/3 }) {
-                                OutlinedButton(onClick={choose(choice)},modifier=Modifier.fillMaxWidth().padding(bottom=6.dp)) { Text(choice.text,modifier=Modifier.fillMaxWidth()) }
+                                OutlinedButton(
+                                    onClick={choose(choice)},
+                                    modifier=Modifier.fillMaxWidth().padding(bottom=6.dp),
+                                    shape=PlayerWeatheredShape,
+                                    border=androidx.compose.foundation.BorderStroke(1.dp,Gold.copy(alpha=0.52f))
+                                ) { Text(choice.text,modifier=Modifier.fillMaxWidth()) }
                             }
                         }
                     }

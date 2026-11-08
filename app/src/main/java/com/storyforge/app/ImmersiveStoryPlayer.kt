@@ -92,7 +92,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
         if (next != "__END__") history = history + next
     }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF111A28), PlayerNight, Color(0xFF020305))))) {
+    Box(Modifier.fillMaxSize().storyforgeBackdrop()) {
         if (showGameIntro) {
             if (coverBitmap != null) Image(coverBitmap, "غلاف " + project.title,
                 Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -139,9 +139,9 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                 if (!ended && scene != null) {
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Bottom) {
                         Spacer(Modifier.height(90.dp))
-                        Card(Modifier.fillMaxWidth().shadow(20.dp, RoundedCornerShape(20.dp)),
-                            colors = CardDefaults.cardColors(containerColor = PlayerPanel), shape = RoundedCornerShape(20.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                        Card(Modifier.fillMaxWidth().shadow(20.dp, WeatheredShape).weatheredStone(),
+                            colors = CardDefaults.cardColors(containerColor = Color.Transparent), shape = WeatheredShape,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF9B9A78).copy(alpha = 0.16f))) {
                             Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(scene.title, color = PlayerGold, fontSize = 21.sp, fontWeight = FontWeight.Bold)
                                 Text(fullText.take(revealedChars).ifBlank { if (fullText.isBlank()) "..." else "" },
@@ -163,7 +163,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                                             }
                                         }
                                     } else if (!isCall || callAnswered) {
-                                        Column(Modifier.fillMaxWidth().background(Color(0xFF222B38), RoundedCornerShape(13.dp)).padding(12.dp),
+                                        Column(Modifier.fillMaxWidth().weatheredStone().padding(12.dp),
                                             verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                             if (line.speaker.isNotBlank()) Text(line.speaker, color = PlayerGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                             if (line.text.isNotBlank()) Text(line.text, color = Color.White, lineHeight = 23.sp)
@@ -205,6 +205,7 @@ internal fun ImmersiveStoryPlayer(project: StoryProject, filesDir: File, onExit:
                                             moveTo(scene.choiceTargets.getOrNull(index))
                                         }, modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp), shape = RoundedCornerShape(14.dp),
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                            shape = WeatheredShape,
                                             border = androidx.compose.foundation.BorderStroke(1.dp, PlayerGold.copy(alpha = 0.55f))) {
                                             Text(choice, Modifier.fillMaxWidth().padding(vertical = 5.dp), textAlign = TextAlign.Start, lineHeight = 21.sp)
                                         }

@@ -143,6 +143,56 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
             val pulse = (1f - kotlin.math.abs(flash - 0.18f) / 0.12f).coerceIn(0f, 1f)
             if (pulse > 0f) drawRect(Color(0xFFBAC7CE).copy(alpha = pulse * 0.075f * strength))
         }
+        // Wildlife is animated as small silhouettes with irregular paths, not glowing icon-like dots.
+        if ("crows" in active) {
+            for (i in 0..2) {
+                val phase = drift * 2f * PI + i * 2.1f
+                val x = ((drift * w * (0.20f + i * 0.035f) + i * w * 0.37f) % (w + 100f)) - 50f
+                val y = h * (0.19f + i * 0.105f) + sin(phase.toFloat()) * h * 0.018f
+                val wing = sin((phase * 2.4).toFloat()) * h * 0.012f
+                val bird = Path().apply {
+                    moveTo(x - w * 0.018f, y)
+                    quadraticTo(x - w * 0.008f, y - h * 0.018f - wing, x, y - h * 0.004f)
+                    quadraticTo(x + w * 0.008f, y - h * 0.018f + wing, x + w * 0.019f, y)
+                    quadraticTo(x + w * 0.006f, y - h * 0.008f, x, y + h * 0.002f)
+                    quadraticTo(x - w * 0.007f, y - h * 0.008f, x - w * 0.018f, y)
+                    close()
+                }
+                drawPath(bird, Color(0xFF080C0A).copy(alpha = 0.68f * strength))
+            }
+        }
+        if ("watching_eyes" in active) {
+            for (i in 0..3) {
+                val x = w * (0.16f + i * 0.215f) + sin((drift * 2f * PI + i * 1.8f).toFloat()) * w * 0.012f
+                val y = h * (0.34f + (i % 2) * 0.13f)
+                val blink = (0.35f + 0.35f * sin((breath * 2f * PI + i * 2.0f).toFloat())).coerceIn(0.06f, 0.72f)
+                val eyeColor = if ("blood_mist" in active) Color(0xFFC17C72) else Color(0xFFB7C18B)
+                drawCircle(Brush.radialGradient(listOf(eyeColor.copy(alpha = blink * 0.18f * strength), Color.Transparent), center = Offset(x, y), radius = 12f),
+                    radius = 12f, center = Offset(x, y))
+                drawOval(eyeColor.copy(alpha = blink * strength), Offset(x - 4.5f, y - 1.2f), androidx.compose.ui.geometry.Size(3.2f, 1.8f))
+                drawOval(eyeColor.copy(alpha = blink * strength), Offset(x + 1.5f, y - 1.2f), androidx.compose.ui.geometry.Size(3.2f, 1.8f))
+            }
+        }
+        if ("moths" in active || "insects" in active) {
+            val count = if ("insects" in active) 9 else 5
+            for (i in 0 until count) {
+                val phase = drift * 2f * PI + i * 2.7f
+                val x = (w * (0.12f + (i * 0.173f) % 0.78f) + sin(phase.toFloat()) * w * 0.025f + drift * w * 0.035f) % w
+                val y = h * (0.24f + (i % 5) * 0.115f) + cos((phase * 1.3).toFloat()) * h * 0.025f
+                val flap = sin((phase * 5.0).toFloat()) * 0.65f
+                val wingColor = Color(0xFFB7AD91).copy(alpha = 0.27f * strength)
+                val wings = Path().apply {
+                    moveTo(x, y)
+                    quadraticTo(x - 5f, y - 8f - flap * 3f, x - 10f, y - 4f + flap * 2f)
+                    quadraticTo(x - 6f, y + 1f, x, y)
+                    moveTo(x, y)
+                    quadraticTo(x + 5f, y - 8f + flap * 3f, x + 10f, y - 4f - flap * 2f)
+                    quadraticTo(x + 6f, y + 1f, x, y)
+                }
+                drawPath(wings, wingColor)
+                drawLine(Color(0xFF252A22).copy(alpha = 0.5f * strength), Offset(x, y - 3f), Offset(x, y + 4f), 1f, cap = StrokeCap.Round)
+            }
+        }
         if ("black_shadows" in active) {
             for (i in 0..2) {
                 val x = ((drift * w * (if (i % 2 == 0) 0.16f else -0.12f) + i * w * 0.43f) % (w + 100f))
