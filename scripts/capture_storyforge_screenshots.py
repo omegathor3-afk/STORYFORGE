@@ -107,7 +107,7 @@ def section_is_visible(label: str) -> bool:
     _, height, _ = dimensions()
     for node in root.iter("node"):
         value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
-        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if label in value and bounds:
             _, y1, _, y2 = map(int, bounds.groups())
             # Ignore Compose semantics nodes that exist in the tree but are outside
