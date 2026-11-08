@@ -609,9 +609,23 @@ class MainActivity : ComponentActivity() {
                                                 .clip(WeatheredShape)
                                                 .background(Color(0xFF0A100D))
                                         ) {
+                                            SceneDepthOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                layer = "far",
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                             AtmosphereOverlay(
                                                 effects = scene.atmosphereEffects,
                                                 theme = current.visualTheme,
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            SceneDepthOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                layer = "near",
                                                 intensity = scene.atmosphereIntensity,
                                                 modifier = Modifier.fillMaxSize()
                                             )
