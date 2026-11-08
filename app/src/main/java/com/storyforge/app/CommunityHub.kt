@@ -56,6 +56,7 @@ private data class CommunityPost(
 )
 
 private data class CommunityComment(val id: String, val author: String, val body: String)
+private data class CommunityMember(val userId: String, val name: String, val bio: String, val followers: Int, val following: Boolean)
 
 private suspend fun communityRequest(
     baseUrl: String,
@@ -113,6 +114,9 @@ internal fun CommunityHub(
     var commentsBusy by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("all") }
     var attachCurrentStory by remember { mutableStateOf(true) }
+    var memberQuery by remember { mutableStateOf("") }
+    var members by remember { mutableStateOf<List<CommunityMember>>(emptyList()) }
+    var membersBusy by remember { mutableStateOf(false) }
 
     fun loadFeed(showSpinner: Boolean = true) {
         val token = accessToken ?: return
@@ -230,6 +234,48 @@ internal fun CommunityHub(
                             }.onFailure { message = it.message ?: "تعذر النشر." }
                         }
                     }, modifier = Modifier.fillMaxWidth(), enabled = title.isNotBlank()) { Text("نشر في المجتمع") }
+                }
+            }
+
+            Card(colors = CardDefaults.cardColors(containerColor = CommunityPanel), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("اكتشف الكتّاب", color = CommunityGold, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(value = memberQuery, onValueChange = { memberQuery = it.take(40) },
+                        label = { Text("ابحث باسم الكاتب") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            membersBusy = true
+                            runCatching {
+                                val query = java.net.URLEncoder.encode(memberQuery.trim(), "UTF-8")
+                                val response = communityRequest(apiBaseUrl, accessToken, "/api/community/members?q=$query")
+                                val array = response.optJSONArray("members") ?: JSONArray()
+                                members = (0 until array.length()).mapNotNull { i ->
+                                    array.optJSONObject(i)?.let { CommunityMember(
+                                        it.optString("user_id"), it.optString("display_name"), it.optString("bio"),
+                                        it.optInt("followers_count"), it.optBoolean("following")
+                                    ) }
+                                }
+                            }.onFailure { message = it.message ?: "تعذر البحث عن الكتّاب." }
+                            membersBusy = false
+                        }
+                    }, modifier = Modifier.fillMaxWidth(), enabled = !membersBusy) { Text(if (membersBusy) "جارٍ البحث…" else "بحث عن كتّاب") }
+                    members.forEach { member ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(Modifier.weight(1f)) {
+                                Text(member.name, color = Color(0xFFE8E4DC), fontWeight = FontWeight.Bold)
+                                if (member.bio.isNotBlank()) Text(member.bio, color = CommunityMuted, fontSize = 11.sp)
+                                Text("${member.followers} متابع", color = CommunityMuted, fontSize = 10.sp)
+                            }
+                            TextButton(onClick = {
+                                scope.launch {
+                                    runCatching {
+                                        communityRequest(apiBaseUrl, accessToken, "/api/community/follow", "POST", JSONObject().put("userId",member.userId))
+                                        members = members.map { if (it.userId == member.userId) it.copy(following = !it.following) else it }
+                                    }.onFailure { message = it.message ?: "تعذر تحديث المتابعة." }
+                                }
+                            }) { Text(if (member.following) "تتابعه ✓" else "＋ متابعة", color = CommunityGreen) }
+                        }
+                    }
                 }
             }
 
