@@ -100,6 +100,15 @@ def tap_bottom_tab(label: str, index: int) -> None:
     time.sleep(2)
 
 
+def scroll_to_text(label: str, max_swipes: int = 18) -> None:
+    for _ in range(max_swipes):
+        if label in visible_text():
+            return
+        adb("shell", "input", "swipe", "540", "1570", "540", "560", "450")
+        time.sleep(0.35)
+    raise RuntimeError(f"Could not scroll to section {label!r}; current UI: {visible_text()[:1000]}")
+
+
 def capture(filename: str) -> dict:
     remote = f"/sdcard/{filename}"
     adb("shell", "screencap", "-p", remote)
@@ -196,32 +205,57 @@ def main() -> None:
     time.sleep(1)
     captures.append(capture("02-studio-atmosphere-effects.png"))
 
+    # Capture the environmental set dressing, dialogue, branching choices, and asset library.
+    scroll_to_text("تخطيطات بيئية جاهزة")
+    require_tap("غابة ميتة")
+    time.sleep(0.8)
+    captures.append(capture("03-studio-environment-layout.png"))
+
+    scroll_to_text("حوارات المشهد")
+    captures.append(capture("04-studio-dialogue.png"))
+
+    scroll_to_text("اختيارات اللاعب")
+    captures.append(capture("05-studio-choices.png"))
+
+    scroll_to_text("مكتبة الأصول")
+    captures.append(capture("06-studio-assets.png"))
+
     # Return to the top of the long Studio screen before using bottom navigation.
-    for _ in range(12):
-        adb("shell", "input", "swipe", "540", "500", "540", "1550", "350")
+    for _ in range(16):
+        adb("shell", "input", "swipe", "540", "500", "540", "1570", "350")
     time.sleep(0.8)
     tap_bottom_tab("المكتبة", 0)
     require_visible("The Ashen Bell")
     if "مشروع جديد" in visible_text():
         raise RuntimeError("Unexpected project dialog while viewing the library.")
-    captures.append(capture("03-library-project.png"))
+    captures.append(capture("07-library-project.png"))
 
     tap_bottom_tab("المعاينة", 2)
     require_visible("The Ashen Bell")
     time.sleep(1)
-    captures.append(capture("04-story-preview.png"))
+    captures.append(capture("08-story-preview.png"))
+
+    # Open the full-screen story player to inspect the rendered atmosphere layers in context.
+    require_tap("ابدأ التجربة السينمائية الغامرة")
+    time.sleep(2)
+    player_ui = visible_text()
+    if not any(token in player_ui for token in ("المشهد", "متابعة", "إنهاء القصة")):
+        raise RuntimeError(f"Immersive story player did not open: {player_ui[:1200]}")
+    captures.append(capture("09-immersive-atmosphere-player.png"))
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.8)
 
     tap_bottom_tab("التعلّم", 3)
     academy_ui = visible_text()
     if not any(token in academy_ui for token in ("أكاديمية", "التعلّم", "تعلم")):
         raise RuntimeError(f"Learning center did not open: {academy_ui[:1200]}")
-    captures.append(capture("05-learning-academy.png"))
+    captures.append(capture("10-learning-academy.png"))
 
     tap_bottom_tab("بناء APK", 4)
     build_ui = visible_text()
     if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
         raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
-    captures.append(capture("06-build-center.png"))
+    captures.append(capture("11-build-center.png"))
 
     manifest = {
         "application": "STORYFORGE",
