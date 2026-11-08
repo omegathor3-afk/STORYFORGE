@@ -91,13 +91,23 @@ def require_visible(label: str) -> None:
         raise RuntimeError(f"Expected UI text is not visible: {label!r}. Current UI: {text[:1200]}")
 
 
+def scroll_to_top() -> None:
+    # The app keeps one scroll state while bottom tabs change. Reset it so
+    # controls near the top are visible before accessibility-based taps.
+    for _ in range(12):
+        adb("shell", "input", "swipe", "540", "420", "540", "1550", "350")
+        time.sleep(0.18)
+
+
 def tap_bottom_tab(label: str, index: int) -> None:
     if not tap_text(label):
         width, height, density = dimensions()
-        x = round(width * (index + 0.5) / 5)
+        x = round(width * (index + 0.5) / 6)
         y = height - round(64 * density)
         adb("shell", "input", "tap", str(x), str(y))
-    time.sleep(2)
+    time.sleep(1)
+    scroll_to_top()
+    time.sleep(1)
 
 
 def section_is_visible(label: str) -> bool:
@@ -271,9 +281,14 @@ def main() -> None:
     time.sleep(1)
     captures.append(capture("08-story-preview.png"))
 
-    # Open the full-screen story player and record a short clip so moving layers
-    # (fog, rain, spores, fireflies) can be reviewed rather than inferred from PNGs.
-    require_tap("ابدأ التجربة السينمائية الغامرة")
+    # Reset the shared scroll container: the preview launch button is above
+    # the scene card and may be outside the viewport after Studio navigation.
+    scroll_to_top()
+    require_tap("ابدأ التجربة السينمائية الغامرة", contains=True)
+    time.sleep(1)
+    # The immersive player has a short intro gate; enter the actual playable scene
+    # before capturing or recording so the video contains moving atmosphere layers.
+    require_tap("ابدأ المغامرة", contains=True)
     time.sleep(1)
     player_ui = visible_text()
     if not any(token in player_ui for token in ("المشهد", "متابعة", "انتهت الحكاية", "الطرقات على الباب")):
@@ -306,6 +321,12 @@ def main() -> None:
     if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
         raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
     captures.append(capture("11-build-center.png"))
+
+    tap_bottom_tab("المجتمع", 5)
+    community_ui = visible_text()
+    if not any(token in community_ui for token in ("مجتمع STORYFORGE", "حالة الاتصال")):
+        raise RuntimeError(f"Community hub did not open: {community_ui[:1200]}")
+    captures.append(capture("12-community-hub.png"))
 
     manifest = {
         "application": "STORYFORGE",
