@@ -75,7 +75,7 @@ private val guideLessons = listOf(
 )
 
 @Composable
-fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
+fun LearningCenter(project: StoryProject? = null, onOpenStudio: (() -> Unit)? = null) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("storyforge_learning", Context.MODE_PRIVATE) }
     val completed = remember { mutableStateListOf<Int>().apply {
@@ -90,6 +90,24 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("أكاديمية STORYFORGE", color = Color(0xFFD6B477), fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("دليل عملي تفاعلي يعلمك صناعة لعبة قصصية خطوة بخطوة، من أول مشروع حتى تصدير اللعبة.", color = Color(0xFF9BA4AE), lineHeight = 22.sp)
+        project?.let { activeProject ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF202820)), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("تطبيق الدروس على مشروعك الحالي", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(activeProject.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${activeProject.scenes.size} مشاهد · ${activeProject.characters.size} شخصيات · ${activeProject.assets.size} وسائط",
+                        color = Color(0xFF9BA4AE), fontSize = 11.sp
+                    )
+                    if (activeProject.description.isNotBlank()) {
+                        Text(activeProject.description, color = Color(0xFFB8C2B8), fontSize = 12.sp, lineHeight = 19.sp)
+                    }
+                    if (onOpenStudio != null) {
+                        TextButton(onClick = onOpenStudio) { Text("افتح المشروع في الاستوديو", color = Color(0xFFD6B477)) }
+                    }
+                }
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF171C22)), shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
