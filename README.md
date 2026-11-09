@@ -21,13 +21,19 @@ STORYFORGE is an offline-first Android story authoring studio built with Kotlin 
 A GitHub Actions workflow can package one exported `.storygame` into its own installable Android APK:
 
 - The story bundle is embedded and loaded automatically at launch.
-- Each generated game can have its own Android application ID and launcher name.
-- An optional square PNG icon can be supplied.
-- The workflow validates the package and produces a SHA-256 checksum and build metadata.
+- Each generated game can have its own Android application ID, launcher name, version, and optional square PNG icon.
+- The workflow verifies the embedded story archive and APK identity, and publishes a SHA-256 checksum plus build metadata.
+- Debug builds are available without a production signing key. Release builds require the owner-provided GitHub Actions signing secrets.
 
-See the complete Arabic walkthrough: [docs/STANDALONE_APK.md](docs/STANDALONE_APK.md).
+### Cloud Builder status
 
-**Current limitation:** the workflow currently produces a Debug APK for testing and direct installation. A signed Release build for Google Play distribution is a separate milestone. The APK generation currently runs through GitHub Actions; an in-app one-tap cloud builder is not yet connected.
+The Android Build Center client is implemented. It includes native OIDC Authorization Code + PKCE sign-in, local creation of the selected story package, upload to private object storage through a short-lived signed URL, build-job dispatch, status refresh, and secure artifact download handoff.
+
+The matching backend foundation is in `cloud-build-service/` (Vercel Functions, PostgreSQL, OIDC/JWKS validation, GitHub App dispatch, and private Cloudflare R2 uploads). **It is not deployed or live.** The cloud flow therefore requires the owner to provision and configure that backend before it can be used. No GitHub token, GitHub App private key, R2 secret, or APK signing key belongs in the Android app.
+
+Until the backend is deployed, use the manual GitHub Actions workflow described in [docs/STANDALONE_APK.md](docs/STANDALONE_APK.md). The temporary signing key used by CI is only a disposable verification fixture and must never be reused for a real game or production distribution.
+
+See the Arabic setup and status guide: [docs/STANDALONE_APK.md](docs/STANDALONE_APK.md).
 
 ## Build and CI
 
