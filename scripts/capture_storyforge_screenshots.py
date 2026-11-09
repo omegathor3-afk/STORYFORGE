@@ -269,9 +269,10 @@ def main() -> None:
         adb("shell", "input", "swipe", "540", "500", "540", "1570", "350")
     time.sleep(0.8)
     tap_bottom_tab("المكتبة", 0)
+    require_visible("مكتبة القصص")
     require_visible("The Ashen Bell")
-    if "مشروع جديد" in visible_text():
-        raise RuntimeError("Unexpected project dialog while viewing the library.")
+    # The library legitimately contains a "＋ إنشاء مشروع جديد" button;
+    # do not mistake that permanent action for the new-project dialog.
     captures.append(capture("07-library-project.png"))
 
     tap_bottom_tab("المعاينة", 2)
