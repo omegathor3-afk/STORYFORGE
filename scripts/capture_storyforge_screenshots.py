@@ -126,6 +126,14 @@ def scroll_to_text(label: str, max_swipes: int = 18) -> None:
     raise RuntimeError(f"Could not bring section {label!r} into the visible viewport; current UI: {visible_text()[:1000]}")
 
 
+def scroll_to_top(max_swipes: int = 18) -> None:
+    # Compose keeps the parent scroll offset when switching bottom tabs.
+    # Repeated downward swipes make each captured destination start at its header.
+    for _ in range(max_swipes):
+        adb("shell", "input", "swipe", "540", "500", "540", "1570", "350")
+        time.sleep(0.18)
+
+
 def capture(filename: str) -> dict:
     remote = f"/sdcard/{filename}"
     adb("shell", "screencap", "-p", remote)
@@ -257,20 +265,23 @@ def main() -> None:
     scroll_to_text("مكتبة الأصول")
     captures.append(capture("06-studio-assets.png"))
 
-    # Return to the top of the long Studio screen before using bottom navigation.
-    for _ in range(16):
-        adb("shell", "input", "swipe", "540", "500", "540", "1570", "350")
-    time.sleep(0.8)
+    # Reset the shared Compose scroll position before each destination capture.
+    scroll_to_top()
     tap_bottom_tab("المكتبة", 0)
+    scroll_to_top()
     require_visible("The Ashen Bell")
     if "مشروع جديد" in visible_text():
         raise RuntimeError("Unexpected project dialog while viewing the library.")
     captures.append(capture("07-library-project.png"))
 
     tap_bottom_tab("المعاينة", 2)
+    scroll_to_top()
     preview_ui = visible_text()
+    if "The Ashen Bell" not in preview_ui:
+        raise RuntimeError(f"Preview is missing the active sample story: {preview_ui[:1200]}")
     if not any(token in preview_ui for token in ("معاينة تفاعلية", "الطرقات على الباب", "مشهد")):
         raise RuntimeError(f"Story preview did not open: {preview_ui[:1200]}")
+    require_visible("ابدأ التجربة السينمائية الغامرة")
     time.sleep(1)
     captures.append(capture("08-story-preview.png"))
 
@@ -299,6 +310,7 @@ def main() -> None:
     time.sleep(0.8)
 
     tap_bottom_tab("التعلّم", 3)
+    scroll_to_top()
     academy_ui = visible_text()
     if not any(token in academy_ui for token in ("أكاديمية", "التعلّم", "تعلم")):
         raise RuntimeError(f"Learning center did not open: {academy_ui[:1200]}")
@@ -307,6 +319,7 @@ def main() -> None:
     captures.append(capture("10-learning-academy.png"))
 
     tap_bottom_tab("بناء APK", 4)
+    scroll_to_top()
     build_ui = visible_text()
     if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
         raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
