@@ -1148,7 +1148,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             3 -> {
-                                LearningCenter(onOpenStudio = { page = 1 })
+                                LearningCenter(project = current, onOpenStudio = { page = 1 })
                             }
                             4 -> {
                                 BuildCenter(
