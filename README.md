@@ -15,6 +15,7 @@ STORYFORGE is an offline-first Android story authoring studio built with Kotlin 
 - Immersive Player with scene artwork, dialogue, typewriter narration, audio, and choice feedback.
 - Separate Player and Academy Android application modules.
 - Portable `.storygame` export containing a versioned manifest, project data, and referenced media.
+- Community hub client with story publishing/import, genre discovery, member search, follows, reactions, comments, and reporting. Community APIs are implemented in the cloud service; the community is not live until the service is deployed and its database/OIDC configuration is completed.
 
 ## Standalone Android games
 
