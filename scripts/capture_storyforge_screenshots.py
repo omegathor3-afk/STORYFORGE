@@ -276,7 +276,7 @@ def main() -> None:
 
     # Open the full-screen story player and record a short clip so moving layers
     # (fog, rain, spores, fireflies) can be reviewed rather than inferred from PNGs.
-    require_tap("ابدأ التجربة السينمائية الغامرة")
+    require_tap("ابدأ التجربة السينمائية الغامرة", contains=True)
     time.sleep(1)
     player_ui = visible_text()
     if not any(token in player_ui for token in ("المشهد", "متابعة", "انتهت الحكاية", "الطرقات على الباب")):
@@ -302,12 +302,16 @@ def main() -> None:
     academy_ui = visible_text()
     if not any(token in academy_ui for token in ("أكاديمية", "التعلّم", "تعلم")):
         raise RuntimeError(f"Learning center did not open: {academy_ui[:1200]}")
+    if "The Ashen Bell" not in academy_ui:
+        raise RuntimeError(f"Academy is missing the active sample project context: {academy_ui[:1200]}")
     captures.append(capture("10-learning-academy.png"))
 
     tap_bottom_tab("بناء APK", 4)
     build_ui = visible_text()
     if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
         raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
+    if "The Ashen Bell" not in build_ui:
+        raise RuntimeError(f"Build Center is missing the active sample project: {build_ui[:1200]}")
     captures.append(capture("11-build-center.png"))
 
     manifest = {
