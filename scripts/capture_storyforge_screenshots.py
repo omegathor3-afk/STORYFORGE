@@ -241,7 +241,7 @@ def main() -> None:
         adb("shell", "input", "swipe", "540", "1550", "540", "620", "500")
         time.sleep(0.35)
     require_visible("تركيبات أجواء جاهزة")
-    require_tap("غابة ميتة")
+    require_tap("غابة ميتة", contains=True)
     time.sleep(1)
     # The live preview now sits above the long chip list, so it is visible
     # in the same viewport as the selected preset and can be inspected directly.
@@ -249,7 +249,7 @@ def main() -> None:
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
     scroll_to_text("تخطيطات بيئية جاهزة")
-    require_tap("غابة ميتة")
+    require_tap("غابة ميتة", contains=True)
     time.sleep(0.8)
     captures.append(capture("03-studio-environment-layout.png"))
 
