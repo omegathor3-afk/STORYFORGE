@@ -239,6 +239,9 @@ def main() -> None:
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
     scroll_to_text("تخطيطات بيئية جاهزة")
+    # The layout preset is below its section heading; bring the actual button
+    # into the viewport before tapping it (the atmosphere preset is higher up).
+    scroll_to_text("غابة ميتة")
     require_tap("غابة ميتة", contains=True)
     time.sleep(0.8)
     captures.append(capture("03-studio-environment-layout.png"))
