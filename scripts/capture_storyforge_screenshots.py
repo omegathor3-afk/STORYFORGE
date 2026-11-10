@@ -97,38 +97,63 @@ def tap_text(label: str, contains: bool = False) -> bool:
     return True
 
 
-def tap_edit_text_below_label(label: str) -> None:
-    """Tap the nearest Android EditText below a visible section/field label."""
+def tap_edit_text_for_label(label: str) -> None:
+    """Focus the EditText associated with a visible label or section heading."""
     root = hierarchy()
     if root is None:
         raise RuntimeError(f"Cannot inspect UI before editing field: {label}")
-    label_bottoms = []
+
+    def rect(node):
+        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        return tuple(map(int, match.groups())) if match else None
+
+    label_nodes = []
+    edit_nodes = []
+    direct = []
     for node in root.iter("node"):
         value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
-        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if label in value and bounds:
-            _, y1, _, y2 = map(int, bounds.groups())
-            if y2 > 150:
-                label_bottoms.append(y2)
-    if not label_bottoms:
-        raise RuntimeError(f"Field label is not visible: {label}")
-    label_bottom = min(label_bottoms)
-    fields = []
-    for node in root.iter("node"):
-        if "EditText" not in node.attrib.get("class", ""):
-            continue
-        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        bounds = rect(node)
         if not bounds:
             continue
-        x1, y1, x2, y2 = map(int, bounds.groups())
-        if y1 >= label_bottom - 8 and y1 - label_bottom <= 560 and y2 > y1:
-            fields.append((y1, (x1 + x2) // 2, (y1 + y2) // 2))
-    if not fields:
-        raise RuntimeError(f"No editable field was found below label: {label}")
-    _, x, y = min(fields)
-    adb("shell", "input", "tap", str(x), str(y))
-    time.sleep(0.6)
+        if label in value:
+            label_nodes.append((node, bounds))
+            if "EditText" in node.attrib.get("class", ""):
+                direct.append(bounds)
+        if "EditText" in node.attrib.get("class", ""):
+            edit_nodes.append((node, bounds))
 
+    if direct:
+        _, x1, _, y1 = (0, 0, 0, 0) if False else (0, 0, 0, 0)
+        x1, y1, x2, y2 = max(direct, key=lambda r: (r[3] - r[1]) * (r[2] - r[0]))
+        adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+        time.sleep(0.6)
+        return
+
+    if not label_nodes:
+        raise RuntimeError(f"Field label is not visible: {label}")
+
+    overlapping = []
+    for _, (lx1, ly1, lx2, ly2) in label_nodes:
+        for _, (x1, y1, x2, y2) in edit_nodes:
+            ix1, iy1 = max(lx1, x1), max(ly1, y1)
+            ix2, iy2 = min(lx2, x2), min(ly2, y2)
+            area = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+            if area:
+                overlapping.append((area, (x1, y1, x2, y2)))
+    if overlapping:
+        x1, y1, x2, y2 = max(overlapping, key=lambda item: item[0])[1]
+    else:
+        label_bottom = min(bounds[3] for _, bounds in label_nodes)
+        below = [
+            bounds for _, bounds in edit_nodes
+            if bounds[1] >= label_bottom - 8 and bounds[1] - label_bottom <= 560
+        ]
+        if not below:
+            raise RuntimeError(f"No editable field was found for label: {label}")
+        x1, y1, x2, y2 = min(below, key=lambda bounds: bounds[1])
+
+    adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+    time.sleep(0.6)
 
 def require_tap(label: str, contains: bool = False) -> None:
     if not tap_text(label, contains):
@@ -295,7 +320,7 @@ def main() -> None:
     scroll_to_text("نص المشهد")
     # The starter scene already has sample text, so its placeholder is absent.
     # Locate the editable field by its section heading and append a short setting note.
-    tap_edit_text_below_label("نص المشهد")
+    tap_edit_text_for_label("نص المشهد")
     adb("shell", "input", "keyevent", "123")  # Move cursor to the end of the existing scene text.
     type_ascii(" At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
     adb("shell", "input", "keyevent", "4")
@@ -331,12 +356,12 @@ def main() -> None:
     require_tap("＋ سطر حوار", contains=True)
     time.sleep(0.6)
     scroll_to_text("المتحدث")
-    tap_edit_text_below_label("المتحدث")
+    tap_edit_text_for_label("المتحدث")
     type_ascii("Mara")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.6)
     scroll_to_text("نص الحوار")
-    tap_edit_text_below_label("نص الحوار")
+    tap_edit_text_for_label("نص الحوار")
     type_ascii("If the bell rings again, forget my name. Do not follow the sound.")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
@@ -347,12 +372,12 @@ def main() -> None:
     # their section heading (which previously left this screenshot identical
     # to the dialogue screen).
     scroll_to_text("الاختيار 1")
-    require_tap("الاختيار 1", contains=True)
+    tap_edit_text_for_label("الاختيار 1")
     type_ascii("Follow the bell")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.6)
     scroll_to_text("الاختيار 2")
-    require_tap("الاختيار 2", contains=True)
+    tap_edit_text_for_label("الاختيار 2")
     type_ascii("Hide in the chapel")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
