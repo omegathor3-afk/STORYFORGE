@@ -372,6 +372,7 @@ def main() -> None:
     scroll_to_text("اختيارات اللاعب")
     require_tap("＋ إضافة اختيار", contains=True)
     time.sleep(0.5)
+    scroll_to_text("＋ إضافة اختيار")
     require_tap("＋ إضافة اختيار", contains=True)
     time.sleep(0.6)
 
