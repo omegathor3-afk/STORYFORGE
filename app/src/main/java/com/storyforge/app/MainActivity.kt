@@ -1202,10 +1202,14 @@ class MainActivity : ComponentActivity() {
                                     onStartBuild = { title, appId, version, versionCode, buildType ->
                                         val token = cloudAccessToken
                                         val projectToBuild = current
+                                        val versionCodeValidation = runCatching { parseCloudBuildVersionCode(versionCode) }
                                         if (token == null) {
                                             cloudMessage = "سجّل الدخول أولًا."
                                         } else if (projectToBuild == null) {
                                             cloudMessage = "اختر قصة من المكتبة أولًا."
+                                        } else if (versionCodeValidation.isFailure) {
+                                            cloudMessage = versionCodeValidation.exceptionOrNull()?.message
+                                                ?: "رقم الإصدار غير صالح."
                                         } else {
                                             cloudBusy = true
                                             cloudMessage = "جارٍ تجهيز حزمة القصة ورفعها إلى التخزين الخاص..."
