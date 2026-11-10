@@ -424,12 +424,12 @@ def main() -> None:
     # The cinematic player first presents the story's own title screen. Enter
     # the adventure explicitly before checking the scene and its live choices.
     require_visible("The Ashen Bell")
-    require_tap("ابدأ المغامرة", contains=True)
-    require_visible("مشهد جديد", timeout_seconds=12)
+    require_tap("ابدأ اللعبة", contains=True)
+    require_visible("الطرقات على الباب", timeout_seconds=12)
     require_visible("Follow the bell", timeout_seconds=12)
     time.sleep(0.8)
     player_ui = visible_text()
-    if "مشهد جديد" not in player_ui or "Follow the bell" not in player_ui:
+    if "الطرقات على الباب" not in player_ui or "Follow the bell" not in player_ui:
         raise RuntimeError(f"Immersive scene or its sample choice did not open: {player_ui[:1200]}")
     captures.append(capture("09-immersive-atmosphere-player.png"))
     adb("shell", "settings", "put", "global", "window_animation_scale", "1.0")
