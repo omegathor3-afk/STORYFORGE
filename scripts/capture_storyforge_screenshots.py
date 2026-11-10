@@ -54,6 +54,15 @@ def visible_text() -> str:
     )
 
 
+def has_exact_text(label: str) -> bool:
+    """Match a dialog heading without confusing it with a longer button label."""
+    root = hierarchy()
+    return root is not None and any(
+        node.attrib.get("text", "").strip() == label
+        for node in root.iter("node")
+    )
+
+
 def tap_text(label: str, contains: bool = False) -> bool:
     root = hierarchy()
     if root is None:
@@ -270,7 +279,10 @@ def main() -> None:
     tap_bottom_tab("المكتبة", 0)
     scroll_to_top()
     require_visible("The Ashen Bell")
-    if "مشروع جديد" in visible_text():
+    # The library's primary action is "إنشاء مشروع جديد"; substring matching
+    # incorrectly treats that normal button as an open dialog. Only the exact
+    # dialog heading should block this capture.
+    if has_exact_text("مشروع جديد"):
         raise RuntimeError("Unexpected project dialog while viewing the library.")
     captures.append(capture("07-library-project.png"))
 
