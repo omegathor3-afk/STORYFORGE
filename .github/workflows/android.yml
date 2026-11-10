@@ -44,7 +44,7 @@ jobs:
           downloaded=false
           for url in "${URLS[@]}"; do
             echo "Trying Gradle mirror: $url"
-            if curl --fail --location --retry 2 --retry-all-errors --retry-delay 3 "$url" --output "$ZIP"; then
+            if curl --connect-timeout 20 --max-time 180 --fail --location "$url" --output "$ZIP"; then
               actual_sha256="$(sha256sum "$ZIP" | awk '{print $1}')"
               if [ "$actual_sha256" = "$EXPECTED_SHA256" ]; then
                 downloaded=true
