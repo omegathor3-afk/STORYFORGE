@@ -105,7 +105,7 @@ def tap_edit_text_below_label(label: str) -> None:
     label_bottoms = []
     for node in root.iter("node"):
         value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
-        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if label in value and bounds:
             _, y1, _, y2 = map(int, bounds.groups())
             if y2 > 150:
@@ -117,7 +117,7 @@ def tap_edit_text_below_label(label: str) -> None:
     for node in root.iter("node"):
         if "EditText" not in node.attrib.get("class", ""):
             continue
-        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if not bounds:
             continue
         x1, y1, x2, y2 = map(int, bounds.groups())
