@@ -257,6 +257,15 @@ def main() -> None:
     require_visible("The Ashen Bell")
     require_visible("فحص القصة")
 
+    # Turn the blank starter scene into a genuinely playable sample before
+    # reviewing the editor, preview, Academy, and Build Center.
+    scroll_to_text("نص المشهد")
+    require_tap("نص المشهد", contains=True)
+    type_ascii("At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.8)
+    require_visible("At dusk")
+
     # The create action selects the new project and opens Studio (page 1).
     captures.append(capture("01-studio-project.png"))
 
@@ -283,11 +292,35 @@ def main() -> None:
     captures.append(capture("03-studio-environment-layout.png"))
 
     scroll_to_text("حوارات المشهد")
-    if tap_text("＋ سطر حوار"):
-        time.sleep(0.8)
+    require_tap("＋ سطر حوار", contains=True)
+    time.sleep(0.6)
+    scroll_to_text("المتحدث")
+    require_tap("المتحدث", contains=True)
+    type_ascii("Mara")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.6)
+    scroll_to_text("نص الحوار")
+    require_tap("نص الحوار", contains=True)
+    type_ascii("If the bell rings again, forget my name. Do not follow the sound.")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.8)
+    scroll_to_text("نص الحوار")
     captures.append(capture("04-studio-dialogue.png"))
 
-    scroll_to_text("اختيارات اللاعب")
+    # Populate two actual branches and capture the choice controls, not only
+    # their section heading (which previously left this screenshot identical
+    # to the dialogue screen).
+    scroll_to_text("الاختيار 1")
+    require_tap("الاختيار 1", contains=True)
+    type_ascii("Follow the bell")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.6)
+    scroll_to_text("الاختيار 2")
+    require_tap("الاختيار 2", contains=True)
+    type_ascii("Hide in the chapel")
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.8)
+    scroll_to_text("الاختيار 1")
     captures.append(capture("05-studio-choices.png"))
 
     scroll_to_text("مكتبة الأصول")
@@ -320,9 +353,16 @@ def main() -> None:
     # (fog, rain, spores, fireflies) can be reviewed rather than inferred from PNGs.
     require_tap("ابدأ التجربة السينمائية الغامرة", contains=True)
     time.sleep(1)
+    # The cinematic player first presents the story's own title screen. Enter
+    # the adventure explicitly before checking the scene and its live choices.
+    require_visible("The Ashen Bell")
+    require_tap("ابدأ المغامرة", contains=True)
+    require_visible("مشهد جديد", timeout_seconds=12)
+    require_visible("Follow the bell", timeout_seconds=12)
+    time.sleep(0.8)
     player_ui = visible_text()
-    if not any(token in player_ui for token in ("المشهد", "متابعة", "انتهت الحكاية", "الطرقات على الباب")):
-        raise RuntimeError(f"Immersive story player did not open: {player_ui[:1200]}")
+    if "مشهد جديد" not in player_ui or "Follow the bell" not in player_ui:
+        raise RuntimeError(f"Immersive scene or its sample choice did not open: {player_ui[:1200]}")
     captures.append(capture("09-immersive-atmosphere-player.png"))
     adb("shell", "settings", "put", "global", "window_animation_scale", "1.0")
     adb("shell", "settings", "put", "global", "transition_animation_scale", "1.0")
