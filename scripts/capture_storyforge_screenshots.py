@@ -33,15 +33,29 @@ def dimensions() -> tuple[int, int, float]:
 
 
 def hierarchy() -> ET.Element | None:
-    adb("shell", "uiautomator", "dump", "/sdcard/storyforge-window.xml", check=False)
-    subprocess.run(
-        ["adb", "pull", "/sdcard/storyforge-window.xml", "/tmp/storyforge-window.xml"],
-        capture_output=True, text=True
-    )
-    try:
-        return ET.parse("/tmp/storyforge-window.xml").getroot()
-    except (ET.ParseError, OSError):
-        return None
+    local_xml = Path("/tmp/storyforge-window.xml")
+    for attempt in range(4):
+        try:
+            local_xml.unlink(missing_ok=True)
+            dump = subprocess.run(
+                ["adb", "shell", "uiautomator", "dump", "/sdcard/storyforge-window.xml"],
+                capture_output=True, text=True, timeout=15
+            )
+            if dump.returncode == 0:
+                pull = subprocess.run(
+                    ["adb", "pull", "/sdcard/storyforge-window.xml", str(local_xml)],
+                    capture_output=True, text=True, timeout=15
+                )
+                if pull.returncode == 0 and local_xml.is_file():
+                    root = ET.parse(local_xml).getroot()
+                    if root.tag == "hierarchy":
+                        return root
+        except (ET.ParseError, OSError, subprocess.TimeoutExpired):
+            pass
+        # uiautomator occasionally reports a transient idle-state failure while
+        # Compose is drawing; retry instead of treating a visible screen as empty.
+        time.sleep(0.25 * (attempt + 1))
+    return None
 
 
 def visible_text() -> str:
@@ -94,10 +108,15 @@ def type_ascii(value: str) -> None:
     time.sleep(0.4)
 
 
-def require_visible(label: str) -> None:
-    text = visible_text()
-    if label not in text:
-        raise RuntimeError(f"Expected UI text is not visible: {label!r}. Current UI: {text[:1200]}")
+def require_visible(label: str, timeout_seconds: float = 12.0) -> None:
+    deadline = time.time() + timeout_seconds
+    current = ""
+    while time.time() < deadline:
+        current = visible_text()
+        if label in current:
+            return
+        time.sleep(0.4)
+    raise RuntimeError(f"Expected UI text is not visible: {label!r}. Current UI: {current[:1200]}")
 
 
 def tap_bottom_tab(label: str, index: int) -> None:
