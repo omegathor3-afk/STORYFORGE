@@ -13,6 +13,15 @@ internal data class CloudBuildResult(
     val downloadUrl: String? = null
 )
 
+internal fun parseCloudBuildVersionCode(raw: String): Int {
+    val parsed = raw.toIntOrNull()
+        ?: throw IllegalArgumentException("رقم الإصدار يجب أن يكون عددًا صحيحًا موجبًا.")
+    require(parsed in 1..2_100_000_000) {
+        "رقم الإصدار يجب أن يكون بين 1 و 2,100,000,000."
+    }
+    return parsed
+}
+
 internal object CloudBuildApi {
     private fun request(
         baseUrl: String,
@@ -62,7 +71,7 @@ internal object CloudBuildApi {
             .put("storygameUrl", storygameUrl)
             .put("gameTitle", gameTitle)
             .put("versionName", versionName)
-            .put("versionCode", versionCode.toIntOrNull() ?: 1)
+            .put("versionCode", parseCloudBuildVersionCode(versionCode))
             .put("buildType", buildType)
         if (applicationId.isNotBlank()) body.put("applicationId", applicationId)
         val json = request(baseUrl, token, "/api/build-jobs", "POST", body)
