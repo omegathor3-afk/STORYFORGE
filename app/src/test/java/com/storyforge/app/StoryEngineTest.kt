@@ -216,4 +216,27 @@ class StoryEngineTest {
         }
     }
 
+    @Test
+    fun cloudBuildInputsAreValidatedBeforeUpload() {
+        validateCloudBuildInputs(" The Ashen Bell ", " com.example.ashen ", "1.0.0", " 1 ", "debug")
+        validateCloudBuildInputs("A valid title", "", "2.4.1", "2100000000", "release")
+
+        val invalidInputs = listOf<() -> Unit>(
+            { validateCloudBuildInputs("", "", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("A".repeat(41), "", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "bad-id.package", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0.0", "0", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0.0", "1", "release-signed") }
+        )
+        invalidInputs.forEachIndexed { index, validate ->
+            try {
+                validate()
+                fail("Expected invalid cloud build input set $index to be rejected")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message?.isNotBlank() == true)
+            }
+        }
+    }
+
 }
