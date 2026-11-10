@@ -104,7 +104,7 @@ def tap_edit_text_for_label(label: str) -> None:
         raise RuntimeError(f"Cannot inspect UI before editing field: {label}")
 
     def rect(node):
-        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         return tuple(map(int, match.groups())) if match else None
 
     label_nodes = []
@@ -123,7 +123,6 @@ def tap_edit_text_for_label(label: str) -> None:
             edit_nodes.append((node, bounds))
 
     if direct:
-        _, x1, _, y1 = (0, 0, 0, 0) if False else (0, 0, 0, 0)
         x1, y1, x2, y2 = max(direct, key=lambda r: (r[3] - r[1]) * (r[2] - r[0]))
         adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
         time.sleep(0.6)
