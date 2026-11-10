@@ -367,6 +367,14 @@ def main() -> None:
     scroll_to_text("نص الحوار")
     captures.append(capture("04-studio-dialogue.png"))
 
+    # The selected starter scene initially has no branches. Add two real
+    # choices before editing them so the player preview can exercise branching.
+    scroll_to_text("اختيارات اللاعب")
+    require_tap("＋ إضافة اختيار", contains=True)
+    time.sleep(0.5)
+    require_tap("＋ إضافة اختيار", contains=True)
+    time.sleep(0.6)
+
     # Populate two actual branches and capture the choice controls, not only
     # their section heading (which previously left this screenshot identical
     # to the dialogue screen).
