@@ -35,9 +35,9 @@ internal fun validateCloudBuildInputs(
     }
     val packageId = applicationId.trim()
     require(packageId.isEmpty() ||
-        Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}$").matches(packageId)
+        Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}$").matches(packageId)
     ) { "معرّف تطبيق Android غير صالح." }
-    require(Regex("^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$").matches(versionName.trim())) {
+    require(Regex("^\\d+\\.\\d+\\.\\d+$").matches(versionName.trim())) {
         "اسم الإصدار يجب أن يكون بصيغة MAJOR.MINOR.PATCH مثل 1.0.0."
     }
     parseCloudBuildVersionCode(versionCode.trim())
