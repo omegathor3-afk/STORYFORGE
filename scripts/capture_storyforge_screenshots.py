@@ -260,7 +260,9 @@ def main() -> None:
     # Turn the blank starter scene into a genuinely playable sample before
     # reviewing the editor, preview, Academy, and Build Center.
     scroll_to_text("نص المشهد")
-    require_tap("نص المشهد", contains=True)
+    # "نص المشهد" is a standalone section heading, not the input itself.
+    # Tap the actual OutlinedTextField placeholder so the keyboard receives text.
+    require_tap("اكتب وصف المكان والأحداث والحوار", contains=True)
     type_ascii("At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
