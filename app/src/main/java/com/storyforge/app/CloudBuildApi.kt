@@ -22,6 +22,30 @@ internal fun parseCloudBuildVersionCode(raw: String): Int {
     return parsed
 }
 
+internal fun validateCloudBuildInputs(
+    gameTitle: String,
+    applicationId: String,
+    versionName: String,
+    versionCode: String,
+    buildType: String
+) {
+    val title = gameTitle.trim()
+    require(title.isNotEmpty() && title.length <= 40) {
+        "اسم اللعبة مطلوب وبحد أقصى 40 حرفًا."
+    }
+    val packageId = applicationId.trim()
+    require(packageId.isEmpty() ||
+        Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\\\.[a-zA-Z][a-zA-Z0-9_]*){1,5}$").matches(packageId)
+    ) { "معرّف تطبيق Android غير صالح." }
+    require(Regex("^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$").matches(versionName.trim())) {
+        "اسم الإصدار يجب أن يكون بصيغة MAJOR.MINOR.PATCH مثل 1.0.0."
+    }
+    parseCloudBuildVersionCode(versionCode.trim())
+    require(buildType == "debug" || buildType == "release") {
+        "نوع البناء يجب أن يكون debug أو release."
+    }
+}
+
 internal object CloudBuildApi {
     private fun request(
         baseUrl: String,
@@ -67,13 +91,14 @@ internal object CloudBuildApi {
         versionCode: String,
         buildType: String
     ): CloudBuildResult {
+        validateCloudBuildInputs(gameTitle, applicationId, versionName, versionCode, buildType)
         val body = JSONObject()
             .put("storygameUrl", storygameUrl)
-            .put("gameTitle", gameTitle)
-            .put("versionName", versionName)
-            .put("versionCode", parseCloudBuildVersionCode(versionCode))
+            .put("gameTitle", gameTitle.trim())
+            .put("versionName", versionName.trim())
+            .put("versionCode", parseCloudBuildVersionCode(versionCode.trim()))
             .put("buildType", buildType)
-        if (applicationId.isNotBlank()) body.put("applicationId", applicationId)
+        if (applicationId.isNotBlank()) body.put("applicationId", applicationId.trim())
         val json = request(baseUrl, token, "/api/build-jobs", "POST", body)
         return CloudBuildResult(json.getString("jobId"), json.optString("status", "queued"))
     }
