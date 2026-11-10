@@ -97,6 +97,39 @@ def tap_text(label: str, contains: bool = False) -> bool:
     return True
 
 
+def tap_edit_text_below_label(label: str) -> None:
+    """Tap the nearest Android EditText below a visible section/field label."""
+    root = hierarchy()
+    if root is None:
+        raise RuntimeError(f"Cannot inspect UI before editing field: {label}")
+    label_bottoms = []
+    for node in root.iter("node"):
+        value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
+        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if label in value and bounds:
+            _, y1, _, y2 = map(int, bounds.groups())
+            if y2 > 150:
+                label_bottoms.append(y2)
+    if not label_bottoms:
+        raise RuntimeError(f"Field label is not visible: {label}")
+    label_bottom = min(label_bottoms)
+    fields = []
+    for node in root.iter("node"):
+        if "EditText" not in node.attrib.get("class", ""):
+            continue
+        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if not bounds:
+            continue
+        x1, y1, x2, y2 = map(int, bounds.groups())
+        if y1 >= label_bottom - 8 and y1 - label_bottom <= 560 and y2 > y1:
+            fields.append((y1, (x1 + x2) // 2, (y1 + y2) // 2))
+    if not fields:
+        raise RuntimeError(f"No editable field was found below label: {label}")
+    _, x, y = min(fields)
+    adb("shell", "input", "tap", str(x), str(y))
+    time.sleep(0.6)
+
+
 def require_tap(label: str, contains: bool = False) -> None:
     if not tap_text(label, contains):
         raise RuntimeError(f"Required UI control was not found: {label}")
@@ -260,10 +293,11 @@ def main() -> None:
     # Turn the blank starter scene into a genuinely playable sample before
     # reviewing the editor, preview, Academy, and Build Center.
     scroll_to_text("نص المشهد")
-    # "نص المشهد" is a standalone section heading, not the input itself.
-    # Tap the actual OutlinedTextField placeholder so the keyboard receives text.
-    require_tap("اكتب وصف المكان والأحداث والحوار", contains=True)
-    type_ascii("At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
+    # The starter scene already has sample text, so its placeholder is absent.
+    # Locate the editable field by its section heading and append a short setting note.
+    tap_edit_text_below_label("نص المشهد")
+    adb("shell", "input", "keyevent", "123")  # Move cursor to the end of the existing scene text.
+    type_ascii(" At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
     require_visible("At dusk")
@@ -297,12 +331,12 @@ def main() -> None:
     require_tap("＋ سطر حوار", contains=True)
     time.sleep(0.6)
     scroll_to_text("المتحدث")
-    require_tap("المتحدث", contains=True)
+    tap_edit_text_below_label("المتحدث")
     type_ascii("Mara")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.6)
     scroll_to_text("نص الحوار")
-    require_tap("نص الحوار", contains=True)
+    tap_edit_text_below_label("نص الحوار")
     type_ascii("If the bell rings again, forget my name. Do not follow the sound.")
     adb("shell", "input", "keyevent", "4")
     time.sleep(0.8)
