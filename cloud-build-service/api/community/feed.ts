@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { db, requireUser, respondError } from "../_lib/runtime";
+import { parseCommunityFeedCursor } from "../_lib/community-feed-cursor";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -12,11 +13,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let where = "p.status='published'";
       if (genre && genre !== "all") { params.push(genre); where += " AND p.genre=$" + params.length; }
       if (cursor) {
-        const [time, id] = cursor.split("|");
-        if (!time || !id || !/^\\d{4}-\\d\\d-\\d\\dT/.test(time) || !/^[0-9a-f-]{36}$/i.test(id)) {
-          throw new Error("INVALID:مؤشر الصفحة غير صالح.");
-        }
-        params.push(time, id);
+        const parsedCursor = parseCommunityFeedCursor(cursor);
+        if (!parsedCursor) throw new Error("INVALID:مؤشر الصفحة غير صالح.");
+        params.push(parsedCursor.time, parsedCursor.id);
         where += " AND (p.created_at,p.id)<($" + (params.length - 1) + "::timestamptz,$" + params.length + "::uuid)";
       }
       params.push(limit);

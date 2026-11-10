@@ -6,7 +6,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --target ES2022 --module commonjs --moduleResolution node --strict --skipLibCheck --outDir node_modules/.cache/community-feed-cursor-test api/_lib/community-feed-cursor.ts && node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",

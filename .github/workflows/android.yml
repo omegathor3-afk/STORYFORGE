@@ -33,6 +33,10 @@ jobs:
           npm install --no-package-lock --ignore-scripts
           npm run typecheck
 
+      - name: Test cloud service cursor validation
+        working-directory: cloud-build-service
+        run: npm test
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
