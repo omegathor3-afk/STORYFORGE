@@ -77,7 +77,7 @@ jobs:
           "$RUNNER_TEMP/gradle-$GRADLE_VERSION/bin/gradle" --version
 
       - name: Run story engine tests
-        run: gradle --no-daemon :app:testDebugUnitTest
+        run: gradle --no-daemon :app:testDebugUnitTest :player:testDebugUnitTest
 
       - name: Build with Gradle
         run: gradle --no-daemon :app:assembleDebug :player:assembleDebug :academy:assembleDebug
