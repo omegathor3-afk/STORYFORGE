@@ -68,11 +68,16 @@ def visible_text() -> str:
     )
 
 
+def matches_ui_label(value: str, label: str) -> bool:
+    """Match a complete visible label, never a word embedded in helper prose."""
+    return " ".join(value.split()) == " ".join(label.split())
+
+
 def has_exact_text(label: str) -> bool:
     """Match a dialog heading without confusing it with a longer button label."""
     root = hierarchy()
     return root is not None and any(
-        node.attrib.get("text", "").strip() == label
+        matches_ui_label(node.attrib.get("text", ""), label)
         for node in root.iter("node")
     )
 
@@ -115,7 +120,7 @@ def tap_edit_text_for_label(label: str) -> None:
         bounds = rect(node)
         if not bounds:
             continue
-        if label in value:
+        if matches_ui_label(value, label):
             label_nodes.append((node, bounds))
             if "EditText" in node.attrib.get("class", ""):
                 direct.append(bounds)
@@ -193,7 +198,7 @@ def section_is_visible(label: str) -> bool:
     for node in root.iter("node"):
         value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
         bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if label in value and bounds:
+        if matches_ui_label(value, label) and bounds:
             _, y1, _, y2 = map(int, bounds.groups())
             # Ignore Compose semantics nodes that exist in the tree but are outside
             # the actual viewport or hidden beneath the bottom navigation.
