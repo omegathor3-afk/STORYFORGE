@@ -319,28 +319,18 @@ def main() -> None:
     require_visible("The Ashen Bell")
     require_visible("فحص القصة")
 
-    # Turn the blank starter scene into a genuinely playable sample before
-    # reviewing the editor, preview, Academy, and Build Center.
-    scroll_to_text("نص المشهد")
-    # The starter scene already has sample text, so its placeholder is absent.
-    # Locate the editable field by its section heading and append a short setting note.
-    tap_edit_text_for_label("نص المشهد")
-    adb("shell", "input", "keyevent", "123")  # Move cursor to the end of the existing scene text.
-    type_ascii(" At dusk, the last bell rings beneath the abandoned village. Cold wind moves through the broken trees. Someone is waiting beyond the gate.")
-    adb("shell", "input", "keyevent", "4")
-    time.sleep(0.8)
-    require_visible("At dusk")
+    # The starter scene already contains an Arabic narrative sample. Keep it
+    # intact so the screenshot remains readable and does not mix appended LTR text
+    # into the middle of the RTL paragraph.
+    require_visible("ثلاث طرقات بطيئة")
 
     # The create action selects the new project and opens Studio (page 1).
     captures.append(capture("01-studio-project.png"))
 
-    # Configure a real scene atmosphere, then capture the selected effects in the editor.
-    for _ in range(12):
-        if "تركيبات أجواء جاهزة" in visible_text():
-            break
-        adb("shell", "input", "swipe", "540", "1550", "540", "620", "500")
-        time.sleep(0.35)
-    require_visible("تركيبات أجواء جاهزة")
+    # Bring both the preset heading and its actual button into the viewport.
+    # A visible heading does not guarantee that the buttons below it are tappable.
+    scroll_to_text("تركيبات أجواء جاهزة")
+    scroll_to_text("غابة ميتة")
     require_tap("غابة ميتة", contains=True)
     time.sleep(1)
     # The live preview now sits above the long chip list, so it is visible
