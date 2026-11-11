@@ -85,7 +85,7 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 )
             }
         }
-        if ("rain" in active || "heavy_rain" in active || "wind" in active) {
+        if (shouldRenderRain(active)) {
             // Three depth planes: fine distant rain, readable mid-rain and a few close streaks.
             val heavy = "heavy_rain" in active
             val windLean = if ("wind" in active) 0.72f else 0.28f
