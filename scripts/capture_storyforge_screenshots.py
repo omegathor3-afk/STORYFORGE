@@ -252,9 +252,15 @@ def main() -> None:
     scroll_to_text("🌧 مطر")
     require_tap("🌧 مطر", contains=True)
     time.sleep(1)
-    scroll_to_top()
-    if "10 طبقة جوية نشطة" not in visible_text():
-        raise RuntimeError("Rain chip did not add a tenth active atmosphere layer.")
+    # Return to the live preview itself, not the top of the editor page:
+    # the preview's active-layer count is below the project header.
+    scroll_to_text("المشهد الآن")
+    active_preview_text = visible_text()
+    if "10 طبقة جوية نشطة" not in active_preview_text:
+        raise RuntimeError(
+            "Rain chip did not add a tenth active atmosphere layer. "
+            f"Visible preview text: {active_preview_text[:1200]}"
+        )
     captures.append(capture("02b-studio-rain-live-preview.png"))
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
