@@ -636,7 +636,7 @@ class MainActivity : ComponentActivity() {
                                                 Text("المشهد الآن", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                                 Text(
                                                     if (scene.atmosphereEffects.isEmpty()) "اختر مؤثرًا لتشاهد تغيّر الأجواء هنا"
-                                                    else "${scene.atmosphereEffects.size} طبقة جوية نشطة · ${(scene.atmosphereIntensity * 100).toInt()}٪",
+                                                    else "\u2068${scene.atmosphereEffects.size}\u2069 طبقة جوية نشطة · \u2068${(scene.atmosphereIntensity * 100).toInt()}٪\u2069",
                                                     color = Color(0xFFE0E3DA), fontSize = 10.sp
                                                 )
                                             }
@@ -685,7 +685,7 @@ class MainActivity : ComponentActivity() {
                                         Spacer(Modifier.height(8.dp))
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("شدة الأجواء", color = Color(0xFFE0C58C), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                            Text("${(scene.atmosphereIntensity * 100).toInt()}%", color = Muted, fontSize = 12.sp)
+                                            Text("\u2068${(scene.atmosphereIntensity * 100).toInt()}%\u2069", color = Muted, fontSize = 12.sp)
                                         }
                                         Slider(
                                             value = scene.atmosphereIntensity.coerceIn(0f, 1f),
