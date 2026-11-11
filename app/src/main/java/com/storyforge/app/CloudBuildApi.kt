@@ -14,7 +14,7 @@ internal data class CloudBuildResult(
 )
 
 internal fun parseCloudBuildVersionCode(raw: String): Int {
-    val parsed = raw.toIntOrNull()
+    val parsed = raw.trim().toIntOrNull()
         ?: throw IllegalArgumentException("رقم الإصدار يجب أن يكون عددًا صحيحًا موجبًا.")
     require(parsed in 1..2_100_000_000) {
         "رقم الإصدار يجب أن يكون بين 1 و 2,100,000,000."
