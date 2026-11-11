@@ -48,7 +48,7 @@ class CloudBuildValidationTest {
     @Test
     fun rejectsMalformedAndroidApplicationIds() {
         listOf(
-            "example.game",
+            "example",
             "com..game",
             "com.example.1game",
             "com.example.game-name",
