@@ -11,6 +11,12 @@ SPEC.loader.exec_module(CAPTURE)
 
 
 class UiLabelMatchingTests(unittest.TestCase):
+    def test_starter_scene_text_is_checked_after_scrolling_to_its_field(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        scroll = source.index('scroll_to_text("نص المشهد")')
+        require = source.index('require_visible("ثلاث طرقات بطيئة")')
+        self.assertLess(scroll, require)
+
     def test_exact_field_label_matches(self):
         self.assertTrue(CAPTURE.matches_ui_label("المتحدث", "المتحدث"))
 
