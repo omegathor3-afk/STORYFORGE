@@ -180,6 +180,8 @@ jobs:
           retention-days: 90
 
       - name: Upload APK
+        # Keep APK evidence available even when the emulator screenshot stage fails.
+        if: always() && hashFiles('app/build/outputs/apk/debug/app-debug.apk', 'player/build/outputs/apk/debug/player-debug.apk', 'academy/build/outputs/apk/debug/academy-debug.apk') != ''
         uses: actions/upload-artifact@v4
         with:
           name: STORYFORGE-PLAYER-ACADEMY-debug-apks
