@@ -319,13 +319,13 @@ def main() -> None:
     require_visible("The Ashen Bell")
     require_visible("فحص القصة")
 
-    # The starter scene already contains an Arabic narrative sample. Keep it
-    # intact so the screenshot remains readable and does not mix appended LTR text
-    # into the middle of the RTL paragraph.
-    require_visible("ثلاث طرقات بطيئة")
-
     # The create action selects the new project and opens Studio (page 1).
     captures.append(capture("01-studio-project.png"))
+
+    # Scene fields are farther down the editor's scrollable column; verify the
+    # starter narrative only after bringing its field into the actual viewport.
+    scroll_to_text("نص المشهد")
+    require_visible("ثلاث طرقات بطيئة")
 
     # Bring both the preset heading and its actual button into the viewport.
     # A visible heading does not guarantee that the buttons below it are tappable.
