@@ -247,6 +247,16 @@ def main() -> None:
     # in the same viewport as the selected preset and can be inspected directly.
     captures.append(capture("02-studio-atmosphere-live-preview.png"))
 
+    # Add rain on top of the dead-forest preset so the live preview and player
+    # evidence prove that layered effects can coexist in one scene.
+    scroll_to_text("🌧 مطر")
+    require_tap("🌧 مطر", contains=True)
+    time.sleep(1)
+    scroll_to_top()
+    if "10 طبقة جوية نشطة" not in visible_text():
+        raise RuntimeError("Rain chip did not add a tenth active atmosphere layer.")
+    captures.append(capture("02b-studio-rain-live-preview.png"))
+
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
     scroll_to_text("تخطيطات بيئية جاهزة")
     # The layout preset is below its section heading; bring the actual button
