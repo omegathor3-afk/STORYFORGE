@@ -2,6 +2,7 @@ package com.storyforge.app
 
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.io.File
 import java.util.UUID
@@ -15,16 +16,20 @@ internal data class CloudBuildResult(
 
 internal fun requireHttpsUrl(raw: String, message: String): URL {
     val parsed = try {
-        URL(raw.trim())
+        URI(raw.trim())
     } catch (error: Exception) {
         throw IllegalArgumentException(message, error)
     }
     require(
-        parsed.protocol.equals("https", ignoreCase = true) &&
-            parsed.host.isNotBlank() &&
+        parsed.scheme?.equals("https", ignoreCase = true) == true &&
+            !parsed.host.isNullOrBlank() &&
             parsed.userInfo == null
     ) { message }
-    return parsed
+    return try {
+        parsed.toURL()
+    } catch (error: Exception) {
+        throw IllegalArgumentException(message, error)
+    }
 }
 
 internal fun requireCloudBuildJobId(raw: String): String {
