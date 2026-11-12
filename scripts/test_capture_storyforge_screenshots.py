@@ -64,10 +64,13 @@ class UiLabelMatchingTests(unittest.TestCase):
         )
         self.assertIsNone(CAPTURE.pixel_launcher_anr_close_point(root))
 
-    def test_recovery_runs_before_waiting_for_screen_content(self):
+    def test_screen_text_reads_recover_launcher_anr_without_duplicate_dumps(self):
         source = SCRIPT.read_text(encoding="utf-8")
+        visible_body = source[source.index("def visible_text"):source.index("def matches_ui_label")]
         require_body = source[source.index("def require_visible"):source.index("def tap_bottom_tab")]
-        self.assertIn("dismiss_pixel_launcher_anr()", require_body)
+        self.assertIn("dismiss_pixel_launcher_anr(root)", visible_body)
+        self.assertIn("visible_text()", require_body)
+        self.assertNotIn("dismiss_pixel_launcher_anr()", require_body)
 
 
 
