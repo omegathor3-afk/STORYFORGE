@@ -86,4 +86,46 @@ class CloudBuildValidationTest {
             validateCloudBuildInputs("Game", "", "1.0.0", "1", "production")
         }
     }
+
+    @Test
+    fun acceptsHttpsPresignedUrlsUsingJavaUrlProtocolName() {
+        val parsed = requireHttpsUrl(
+            "https://storage.example.test/storygames/sample.storygame?signature=abc",
+            "Expected a safe HTTPS URL"
+        )
+        assertEquals("https", parsed.protocol)
+    }
+
+    @Test
+    fun rejectsInsecureMalformedAndCredentialBearingUrls() {
+        listOf(
+            "http://storage.example.test/file",
+            "ftp://storage.example.test/file",
+            "/relative/file",
+            "https:///missing-host",
+            "https://user:password@storage.example.test/file"
+        ).forEach { invalid ->
+            assertThrows("Expected unsafe URL to be rejected: $invalid", IllegalArgumentException::class.java) {
+                requireHttpsUrl(invalid, "Unsafe URL")
+            }
+        }
+    }
+
+    @Test
+    fun acceptsCanonicalCloudBuildUuidAndRejectsPathInjection() {
+        assertEquals(
+            "550e8400-e29b-41d4-a716-446655440000",
+            requireCloudBuildJobId("550e8400-e29b-41d4-a716-446655440000")
+        )
+        listOf(
+            "../artifact",
+            "550e8400-e29b-41d4-a716-44665544000",
+            "550e8400--e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440000?extra=1"
+        ).forEach { invalid ->
+            assertThrows("Expected invalid build job ID: $invalid", IllegalArgumentException::class.java) {
+                requireCloudBuildJobId(invalid)
+            }
+        }
+    }
 }
