@@ -136,6 +136,18 @@ def scroll_to_text(label: str, max_swipes: int = 18) -> None:
     raise RuntimeError(f"Could not bring section {label!r} into the visible viewport; current UI: {visible_text()[:1000]}")
 
 
+def scroll_back_to_text(label: str, max_swipes: int = 18) -> None:
+    """Scroll toward earlier content after selecting a lower effect chip."""
+    for _ in range(max_swipes):
+        if section_is_visible(label):
+            return
+        # Reverse the normal scroll gesture: move the page back toward the
+        # live preview instead of continuing farther down the effect list.
+        adb("shell", "input", "swipe", "540", "560", "540", "1250", "450")
+        time.sleep(0.45)
+    raise RuntimeError(f"Could not scroll back to section {label!r}; current UI: {visible_text()[:1000]}")
+
+
 def capture(filename: str) -> dict:
     remote = f"/sdcard/{filename}"
     adb("shell", "screencap", "-p", remote)
@@ -254,7 +266,7 @@ def main() -> None:
     time.sleep(1)
     # Return to the live preview itself, not the top of the editor page:
     # the preview's active-layer count is below the project header.
-    scroll_to_text("المشهد الآن")
+    scroll_back_to_text("المشهد الآن")
     active_preview_text = visible_text()
     if "10 طبقة جوية نشطة" not in active_preview_text:
         raise RuntimeError(
