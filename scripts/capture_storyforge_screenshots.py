@@ -68,9 +68,11 @@ def visible_text() -> str:
     )
 
 
-def matches_ui_label(value: str, label: str) -> bool:
-    """Match a complete visible label, never a word embedded in helper prose."""
-    return " ".join(value.split()) == " ".join(label.split())
+def matches_ui_label(value: str, label: str, contains: bool = False) -> bool:
+    """Match a complete label, or an intentional visible prefix for descriptive headings."""
+    normalized_value = " ".join(value.split())
+    normalized_label = " ".join(label.split())
+    return normalized_label in normalized_value if contains else normalized_value == normalized_label
 
 
 def has_exact_text(label: str) -> bool:
@@ -190,7 +192,7 @@ def tap_bottom_tab(label: str, index: int) -> None:
     time.sleep(2)
 
 
-def section_is_visible(label: str) -> bool:
+def section_is_visible(label: str, contains: bool = False) -> bool:
     root = hierarchy()
     if root is None:
         return False
@@ -198,7 +200,7 @@ def section_is_visible(label: str) -> bool:
     for node in root.iter("node"):
         value = (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).strip()
         bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if matches_ui_label(value, label) and bounds:
+        if matches_ui_label(value, label, contains=contains) and bounds:
             _, y1, _, y2 = map(int, bounds.groups())
             # Ignore Compose semantics nodes that exist in the tree but are outside
             # the actual viewport or hidden beneath the bottom navigation.
@@ -207,9 +209,9 @@ def section_is_visible(label: str) -> bool:
     return False
 
 
-def scroll_to_text(label: str, max_swipes: int = 18) -> None:
+def scroll_to_text(label: str, max_swipes: int = 18, contains: bool = False) -> None:
     for _ in range(max_swipes):
-        if section_is_visible(label):
+        if section_is_visible(label, contains=contains):
             return
         adb("shell", "input", "swipe", "540", "1570", "540", "560", "450")
         time.sleep(0.45)
@@ -291,7 +293,6 @@ def main() -> None:
 
     captures = []
     require_visible("مكتبة القصص")
-    captures.append(capture("00-library-empty.png"))
 
     # Create a real sample project through the same UI a new user sees.
     require_tap("إنشاء مشروع جديد", contains=True)
@@ -322,6 +323,18 @@ def main() -> None:
     # The create action selects the new project and opens Studio (page 1).
     captures.append(capture("01-studio-project.png"))
 
+    # Capture the library only after the sample project exists; an empty-library
+    # screenshot is not useful evidence for the real-project workflow.
+    tap_bottom_tab("المكتبة", 0)
+    scroll_to_top()
+    require_visible("The Ashen Bell")
+    if has_exact_text("مشروع جديد"):
+        raise RuntimeError("Unexpected project dialog while viewing the populated library.")
+    captures.append(capture("00-library-project.png"))
+    tap_bottom_tab("الاستوديو", 1)
+    scroll_to_top()
+    require_visible("The Ashen Bell")
+
     # Scene fields are farther down the editor's scrollable column; verify the
     # starter narrative only after bringing its field into the actual viewport.
     scroll_to_text("نص المشهد")
@@ -338,10 +351,12 @@ def main() -> None:
     captures.append(capture("02-studio-atmosphere-live-preview.png"))
 
     # Capture the environmental set dressing, dialogue, branching choices, and asset library.
-    scroll_to_text("تخطيطات بيئية جاهزة")
+    # Compose exposes this heading with explanatory text appended, so use an
+    # explicit prefix match rather than scrolling past a heading already visible.
+    scroll_to_text("تخطيطات بيئية جاهزة", contains=True)
     # Use a layout name unique to the environment presets; "غابة ميتة" is also
     # an atmosphere preset earlier in the editor and can stop scrolling too soon.
-    scroll_to_text("خرابة مهجورة")
+    scroll_to_text("خرابة مهجورة", contains=True)
     require_tap("خرابة مهجورة", contains=True)
     time.sleep(0.8)
     captures.append(capture("03-studio-environment-layout.png"))
@@ -390,18 +405,8 @@ def main() -> None:
     scroll_to_text("مكتبة الأصول")
     captures.append(capture("06-studio-assets.png"))
 
-    # Reset the shared Compose scroll position before each destination capture.
-    scroll_to_top()
-    tap_bottom_tab("المكتبة", 0)
-    scroll_to_top()
-    require_visible("The Ashen Bell")
-    # The library's primary action is "إنشاء مشروع جديد"; substring matching
-    # incorrectly treats that normal button as an open dialog. Only the exact
-    # dialog heading should block this capture.
-    if has_exact_text("مشروع جديد"):
-        raise RuntimeError("Unexpected project dialog while viewing the library.")
-    captures.append(capture("07-library-project.png"))
-
+    # The populated library was captured immediately after project creation.
+    # Switch directly to Preview so the same active story is used throughout.
     tap_bottom_tab("المعاينة", 2)
     scroll_to_top()
     preview_ui = visible_text()
