@@ -90,7 +90,7 @@ def pixel_launcher_anr_close_point(root: ET.Element | None) -> tuple[int, int] |
             continue
         if node.attrib.get("clickable") != "true":
             continue
-        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if bounds:
             x1, y1, x2, y2 = map(int, bounds.groups())
             return (x1 + x2) // 2, (y1 + y2) // 2
