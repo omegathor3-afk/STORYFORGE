@@ -3,6 +3,7 @@
 import importlib.util
 import pathlib
 import unittest
+import xml.etree.ElementTree as ET
 
 SCRIPT = pathlib.Path(__file__).with_name("capture_storyforge_screenshots.py").resolve()
 SPEC = importlib.util.spec_from_file_location("storyforge_capture", SCRIPT)
@@ -43,6 +44,31 @@ class UiLabelMatchingTests(unittest.TestCase):
     def test_environment_scroll_uses_the_real_descriptive_heading(self):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('scroll_to_text("تخطيطات بيئية جاهزة", contains=True)', source)
+
+    def test_pixel_launcher_anr_finds_only_its_close_app_button(self):
+        root = ET.fromstring(
+            '<hierarchy>'
+            '<node text="Pixel Launcher isn\'t responding" />'
+            '<node text="Close app" clickable="true" bounds="[70,898][1010,1024]" />'
+            '<node text="Wait" clickable="true" bounds="[70,1024][1010,1150]" />'
+            '</hierarchy>'
+        )
+        self.assertEqual((540, 961), CAPTURE.pixel_launcher_anr_close_point(root))
+
+    def test_non_launcher_anr_is_not_closed_by_launcher_recovery(self):
+        root = ET.fromstring(
+            '<hierarchy>'
+            '<node text="STORYFORGE isn\'t responding" />'
+            '<node text="Close app" clickable="true" bounds="[70,898][1010,1024]" />'
+            '</hierarchy>'
+        )
+        self.assertIsNone(CAPTURE.pixel_launcher_anr_close_point(root))
+
+    def test_recovery_runs_before_waiting_for_screen_content(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        require_body = source[source.index("def require_visible"):source.index("def tap_bottom_tab")]
+        self.assertIn("dismiss_pixel_launcher_anr()", require_body)
+
 
 
 if __name__ == "__main__":
