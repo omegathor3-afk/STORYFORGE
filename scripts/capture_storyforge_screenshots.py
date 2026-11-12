@@ -289,7 +289,10 @@ def main() -> None:
         time.sleep(0.8)
     captures.append(capture("04-studio-dialogue.png"))
 
-    scroll_to_text("اختيارات اللاعب")
+    # The section heading can sit at the viewport edge while its actual controls remain hidden.
+    # Scroll to the add-choice control so this capture proves the choices editor is on screen.
+    scroll_to_text("＋ إضافة اختيار")
+    require_visible("الاختيار 1")
     captures.append(capture("05-studio-choices.png"))
 
     scroll_to_text("مكتبة الأصول")

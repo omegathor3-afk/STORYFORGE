@@ -42,6 +42,30 @@ class AtmosphereEffectPolicyTest {
     }
 
     @Test
+    fun particleSpeedsVaryDeterministicallyWithinSafeBounds() {
+        val speeds = (0 until 26).map { rainParticleSpeedMultiplier(it, 1) }
+        assertTrue(speeds.all { it in 0.82f..1.16f })
+        assertTrue(speeds.distinct().size > 1)
+    }
+
+    @Test
+    fun particlePhaseOffsetsAreStaggeredAndNormalized() {
+        val phases = (0 until 20).map { rainParticlePhaseOffset(it, 2) }
+        assertTrue(phases.all { it >= 0f && it < 1f })
+        assertTrue(phases.distinct().size > 1)
+    }
+
+    @Test
+    fun splashEnvelopeProducesShortFadingImpactsAndRejectsInvalidPhases() {
+        assertEquals(1f, rainSplashEnvelope(0f), 0.0001f)
+        assertEquals(0.5f, rainSplashEnvelope(0.17f), 0.01f)
+        assertEquals(0f, rainSplashEnvelope(0.34f), 0.0001f)
+        assertEquals(0f, rainSplashEnvelope(0.9f), 0.0001f)
+        assertEquals(0f, rainSplashEnvelope(Float.NaN), 0f)
+        assertEquals(0f, rainSplashEnvelope(Float.POSITIVE_INFINITY), 0f)
+    }
+
+    @Test
     fun profileUsesBoundedPositiveAnimationAndParticleValues() {
         listOf(rainEffectProfile(setOf("rain")), rainEffectProfile(setOf("heavy_rain"))).forEach { profile ->
             assertTrue(requireNotNull(profile).distantDrops > 0)

@@ -95,7 +95,7 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
             // Keep precipitation visibly moving without speeding up the slower fog and shadow layers.
             val profile = requireNotNull(rainProfile)
             val windLean = if ("wind" in active) 0.72f else 0.28f
-            val rainColor = Color(0xFF9DB7BC)
+            val rainColor = Color(0xFFB4C8CC)
             for (plane in 0..2) {
                 val count = when (plane) {
                     0 -> profile.distantDrops
@@ -103,35 +103,46 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                     else -> profile.nearDrops
                 }
                 val planeSpeed = 0.72f + plane * 0.42f + if ("heavy_rain" in active) 0.42f else 0f
-                val alpha = (0.16f + plane * 0.075f) * profile.opacityScale * strength
+                val alpha = (0.18f + plane * 0.075f) * profile.opacityScale * strength
                 for (i in 0 until count) {
                     val seed = i * (83.7f + plane * 29.1f) + plane * 41.3f
-                    val x = (seed + rainDrift * w * planeSpeed * (0.78f + windLean)) % (w + 90f) - 45f
-                    val y = (i * (53.9f + plane * 17.3f) + rainDrift * h * planeSpeed * 1.45f) % (h + 60f) - 30f
-                    val length = (8.5f + (i % 6) * 2.6f) * (0.78f + plane * 0.33f) * profile.lengthScale
+                    val speed = rainParticleSpeedMultiplier(i, plane)
+                    val phaseOffset = rainParticlePhaseOffset(i, plane)
+                    val gust = sin((rainDrift * 2f * PI + phaseOffset * 2f * PI).toFloat()) *
+                        w * (0.0025f + plane * 0.0012f)
+                    val x = (seed + rainDrift * w * planeSpeed * speed * (0.78f + windLean) + gust) % (w + 90f) - 45f
+                    val y = (i * (53.9f + plane * 17.3f) + rainDrift * h * planeSpeed * speed * 1.45f +
+                        phaseOffset * h * 0.12f) % (h + 60f) - 30f
+                    val lengthJitter = ((i * 5 + plane * 3) % 7) * 1.55f
+                    val length = (7.8f + lengthJitter) * (0.78f + plane * 0.33f) * profile.lengthScale
                     drawLine(rainColor.copy(alpha = alpha), Offset(x, y),
                         Offset(x - length * windLean, y + length),
-                        strokeWidth = 0.78f + plane * 0.42f, cap = StrokeCap.Round)
+                        strokeWidth = 0.95f + plane * 0.48f, cap = StrokeCap.Round)
                 }
             }
-            // Small broken arcs make rainfall meet the ground instead of stopping at the viewport edge.
+            // Short, staggered impact arcs keep the ground response irregular and alive.
             for (i in 0 until profile.splashCount) {
-                val phase = (rainDrift * 2.4f + i * 0.173f) % 1f
-                val x = (i * w * 0.173f + rainDrift * w * 0.07f) % w
-                val ground = h * (0.91f + (i % 3) * 0.018f)
-                val spread = (5f + (i % 4) * 2f) * (0.35f + phase)
-                val rise = 2f + phase * 7f
-                val splash = Path().apply {
-                    moveTo(x - spread, ground)
-                    quadraticTo(x - spread * 0.45f, ground - rise, x, ground - rise * 0.35f)
-                    quadraticTo(x + spread * 0.45f, ground - rise, x + spread, ground)
-                }
-                drawPath(splash, rainColor.copy(alpha = (0.13f + phase * 0.16f) * profile.opacityScale * strength),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.9f, cap = StrokeCap.Round))
-                if (i % 2 == 0) {
-                    drawLine(rainColor.copy(alpha = 0.26f * profile.opacityScale * strength),
-                        Offset(x + spread * 0.25f, ground - rise * 0.7f),
-                        Offset(x + spread * 0.34f, ground - rise * 1.35f), 0.9f, cap = StrokeCap.Round)
+                val phase = (rainDrift * 3f + rainParticlePhaseOffset(i, 3)) % 1f
+                val envelope = rainSplashEnvelope(phase)
+                if (envelope > 0.015f) {
+                    val x = (i * w * 0.173f + rainDrift * w * 0.07f +
+                        sin((rainDrift * 2f * PI + i * 0.91f).toFloat()) * w * 0.006f) % w
+                    val ground = h * (0.82f + (i % 3) * 0.012f)
+                    val spread = (5f + (i % 4) * 2f) * (0.35f + phase) * envelope
+                    val rise = (2f + phase * 7f) * envelope
+                    val splash = Path().apply {
+                        moveTo(x - spread, ground)
+                        quadraticTo(x - spread * 0.45f, ground - rise, x, ground - rise * 0.35f)
+                        quadraticTo(x + spread * 0.45f, ground - rise, x + spread, ground)
+                    }
+                    drawPath(splash, rainColor.copy(
+                        alpha = (0.15f + phase * 0.14f) * profile.opacityScale * strength * envelope
+                    ), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1f, cap = StrokeCap.Round))
+                    if (i % 2 == 0) {
+                        drawLine(rainColor.copy(alpha = 0.28f * profile.opacityScale * strength * envelope),
+                            Offset(x + spread * 0.25f, ground - rise * 0.7f),
+                            Offset(x + spread * 0.34f, ground - rise * 1.35f), 1f, cap = StrokeCap.Round)
+                    }
                 }
             }
         }
