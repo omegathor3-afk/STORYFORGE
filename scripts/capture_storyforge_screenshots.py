@@ -75,6 +75,38 @@ def matches_ui_label(value: str, label: str, contains: bool = False) -> bool:
     return normalized_label in normalized_value if contains else normalized_value == normalized_label
 
 
+def pixel_launcher_anr_close_point(root: ET.Element | None) -> tuple[int, int] | None:
+    """Return the Close app button center only for the emulator's Pixel Launcher ANR."""
+    if root is None:
+        return None
+    texts = [node.attrib.get("text", "").strip() for node in root.iter("node")]
+    if not any(
+        "Pixel Launcher" in value and ("isn't responding" in value or "لا يستجيب" in value)
+        for value in texts
+    ):
+        return None
+    for node in root.iter("node"):
+        if node.attrib.get("text", "").strip() not in ("Close app", "إغلاق التطبيق"):
+            continue
+        if node.attrib.get("clickable") != "true":
+            continue
+        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if bounds:
+            x1, y1, x2, y2 = map(int, bounds.groups())
+            return (x1 + x2) // 2, (y1 + y2) // 2
+    return None
+
+
+def dismiss_pixel_launcher_anr() -> bool:
+    """Close a hung launcher dialog without dismissing or restarting STORYFORGE."""
+    point = pixel_launcher_anr_close_point(hierarchy())
+    if point is None:
+        return False
+    adb("shell", "input", "tap", str(point[0]), str(point[1]))
+    time.sleep(2.0)
+    return True
+
+
 def has_exact_text(label: str) -> bool:
     """Match a dialog heading without confusing it with a longer button label."""
     root = hierarchy()
@@ -85,6 +117,7 @@ def has_exact_text(label: str) -> bool:
 
 
 def tap_text(label: str, contains: bool = False) -> bool:
+    dismiss_pixel_launcher_anr()
     root = hierarchy()
     if root is None:
         return False
@@ -176,6 +209,7 @@ def require_visible(label: str, timeout_seconds: float = 12.0) -> None:
     deadline = time.time() + timeout_seconds
     current = ""
     while time.time() < deadline:
+        dismiss_pixel_launcher_anr()
         current = visible_text()
         if label in current:
             return
@@ -193,6 +227,7 @@ def tap_bottom_tab(label: str, index: int) -> None:
 
 
 def section_is_visible(label: str, contains: bool = False) -> bool:
+    dismiss_pixel_launcher_anr()
     root = hierarchy()
     if root is None:
         return False
@@ -278,18 +313,17 @@ def main() -> None:
     else:
         raise RuntimeError("Android emulator did not finish booting")
 
-    # Google Messages can become unresponsive in headless emulator sessions and
-    # raise a system ANR dialog over the app, blocking UI automation. It is not
-    # required by STORYFORGE, so disable it for this isolated screenshot run.
-    adb("shell", "pm", "disable-user", "--user", "0", "com.google.android.apps.messaging", check=False)
-
     adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
     # A clean app data set makes the screenshots deterministic on every CI run.
     adb("shell", "pm", "clear", "com.storyforge.app")
     adb("shell", "am", "force-stop", "com.storyforge.app")
-    adb("shell", "monkey", "-p", "com.storyforge.app", "-c",
-        "android.intent.category.LAUNCHER", "1")
+    # Start the app's exported Activity directly; invoking the launcher adds
+    # unnecessary launcher work to this headless capture and can surface its ANR.
+    launch = adb("shell", "am", "start", "-W", "-n", "com.storyforge.app/.MainActivity")
+    if "Status: ok" not in launch:
+        raise RuntimeError(f"Could not launch STORYFORGE MainActivity: {launch}")
     time.sleep(8)
+    dismiss_pixel_launcher_anr()
 
     captures = []
     require_visible("مكتبة القصص")
