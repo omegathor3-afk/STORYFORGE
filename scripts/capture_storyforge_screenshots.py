@@ -58,8 +58,11 @@ def hierarchy() -> ET.Element | None:
     return None
 
 
-def visible_text() -> str:
-    root = hierarchy()
+def visible_text(root: ET.Element | None = None) -> str:
+    if root is None:
+        root = hierarchy()
+    if dismiss_pixel_launcher_anr(root):
+        root = hierarchy()
     if root is None:
         return ""
     return " ".join(
@@ -97,9 +100,11 @@ def pixel_launcher_anr_close_point(root: ET.Element | None) -> tuple[int, int] |
     return None
 
 
-def dismiss_pixel_launcher_anr() -> bool:
+def dismiss_pixel_launcher_anr(root: ET.Element | None = None) -> bool:
     """Close a hung launcher dialog without dismissing or restarting STORYFORGE."""
-    point = pixel_launcher_anr_close_point(hierarchy())
+    if root is None:
+        root = hierarchy()
+    point = pixel_launcher_anr_close_point(root)
     if point is None:
         return False
     adb("shell", "input", "tap", str(point[0]), str(point[1]))
@@ -110,6 +115,8 @@ def dismiss_pixel_launcher_anr() -> bool:
 def has_exact_text(label: str) -> bool:
     """Match a dialog heading without confusing it with a longer button label."""
     root = hierarchy()
+    if dismiss_pixel_launcher_anr(root):
+        root = hierarchy()
     return root is not None and any(
         matches_ui_label(node.attrib.get("text", ""), label)
         for node in root.iter("node")
@@ -117,8 +124,9 @@ def has_exact_text(label: str) -> bool:
 
 
 def tap_text(label: str, contains: bool = False) -> bool:
-    dismiss_pixel_launcher_anr()
     root = hierarchy()
+    if dismiss_pixel_launcher_anr(root):
+        root = hierarchy()
     if root is None:
         return False
     matches = []
@@ -140,6 +148,8 @@ def tap_text(label: str, contains: bool = False) -> bool:
 def tap_edit_text_for_label(label: str) -> None:
     """Focus the EditText associated with a visible label or section heading."""
     root = hierarchy()
+    if dismiss_pixel_launcher_anr(root):
+        root = hierarchy()
     if root is None:
         raise RuntimeError(f"Cannot inspect UI before editing field: {label}")
 
@@ -209,7 +219,6 @@ def require_visible(label: str, timeout_seconds: float = 12.0) -> None:
     deadline = time.time() + timeout_seconds
     current = ""
     while time.time() < deadline:
-        dismiss_pixel_launcher_anr()
         current = visible_text()
         if label in current:
             return
@@ -227,8 +236,9 @@ def tap_bottom_tab(label: str, index: int) -> None:
 
 
 def section_is_visible(label: str, contains: bool = False) -> bool:
-    dismiss_pixel_launcher_anr()
     root = hierarchy()
+    if dismiss_pixel_launcher_anr(root):
+        root = hierarchy()
     if root is None:
         return False
     _, height, _ = dimensions()
