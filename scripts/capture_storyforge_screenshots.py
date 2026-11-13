@@ -293,16 +293,17 @@ def main() -> None:
     # Scroll to the add-choice control so this capture proves the choices editor is on screen.
     scroll_to_text("＋ إضافة اختيار")
     choice_ui = visible_text()
-    # The first option can be above the viewport while the second option is
-    # visible beside the add button. Assert that a numbered option field and
-    # its condition/effect controls are actually composed, not a fixed index.
-    if not re.search(r"الاختيار\s+\d+", choice_ui):
+    # Compose exposes only the part of the option card currently in the viewport;
+    # its numbered label can be above the fold while the choice value and controls remain visible.
+    choice_markers = ("افتح الباب بحذر", "انظر من العين السحرية", "تابع ما بدأته")
+    if not any(marker in choice_ui for marker in choice_markers):
         raise RuntimeError(
-            "No numbered choice field is visible in the choices editor. "
+            "No sample choice value is visible in the choices editor. "
             f"Current UI: {choice_ui[:1200]}"
         )
     require_visible("شرط الظهور (اختياري)")
     require_visible("تأثير الاختيار (اختياري)")
+    require_visible("الوجهة:")
     captures.append(capture("05-studio-choices.png"))
 
     scroll_to_text("مكتبة الأصول")
