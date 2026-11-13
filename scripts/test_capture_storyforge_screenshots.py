@@ -45,6 +45,22 @@ class UiLabelMatchingTests(unittest.TestCase):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('scroll_to_text("تخطيطات بيئية جاهزة", contains=True)', source)
 
+    def test_choice_capture_scrolls_to_real_fields_without_adding_blank_slots(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        dialogue_capture = source.index('capture("04-studio-dialogue.png")')
+        first_choice = source.index('scroll_to_text("الاختيار 1")', dialogue_capture)
+        first_edit = source.index('tap_edit_text_for_label("الاختيار 1")', first_choice)
+        second_choice = source.index('scroll_to_text("الاختيار 2")', first_edit)
+        second_edit = source.index('tap_edit_text_for_label("الاختيار 2")', second_choice)
+        choices_capture = source.index('capture("05-studio-choices.png")', second_edit)
+        self.assertLess(dialogue_capture, first_choice)
+        self.assertLess(first_choice, first_edit)
+        self.assertLess(first_edit, second_choice)
+        self.assertLess(second_choice, second_edit)
+        self.assertLess(second_edit, choices_capture)
+        self.assertNotIn('scroll_to_text("اختيارات اللاعب")', source[dialogue_capture:choices_capture])
+        self.assertNotIn('require_tap("＋ إضافة اختيار"', source[dialogue_capture:choices_capture])
+
     def test_pixel_launcher_anr_finds_only_its_close_app_button(self):
         root = ET.fromstring(
             '<hierarchy>'
