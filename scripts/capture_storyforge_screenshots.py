@@ -292,7 +292,17 @@ def main() -> None:
     # The section heading can sit at the viewport edge while its actual controls remain hidden.
     # Scroll to the add-choice control so this capture proves the choices editor is on screen.
     scroll_to_text("＋ إضافة اختيار")
-    require_visible("الاختيار 1")
+    choice_ui = visible_text()
+    # The first option can be above the viewport while the second option is
+    # visible beside the add button. Assert that a numbered option field and
+    # its condition/effect controls are actually composed, not a fixed index.
+    if not re.search(r"الاختيار\s+\d+", choice_ui):
+        raise RuntimeError(
+            "No numbered choice field is visible in the choices editor. "
+            f"Current UI: {choice_ui[:1200]}"
+        )
+    require_visible("شرط الظهور (اختياري)")
+    require_visible("تأثير الاختيار (اختياري)")
     captures.append(capture("05-studio-choices.png"))
 
     scroll_to_text("مكتبة الأصول")
