@@ -421,20 +421,20 @@ def main() -> None:
     scroll_to_text("نص الحوار")
     captures.append(capture("04-studio-dialogue.png"))
 
-    # The starter scene already provides three editable choice slots. Scroll
-    # to the first actual field rather than stopping at the section heading,
-    # which can sit just above the fixed bottom navigation.
-    scroll_to_text("الاختيار 1")
-    tap_edit_text_for_label("الاختيار 1")
-    type_ascii("Follow the bell")
-    adb("shell", "input", "keyevent", "4")
-    time.sleep(0.6)
-    scroll_to_text("الاختيار 2")
-    tap_edit_text_for_label("الاختيار 2")
-    type_ascii("Hide in the chapel")
-    adb("shell", "input", "keyevent", "4")
-    time.sleep(0.8)
-    scroll_to_text("الاختيار 1")
+    # Compose exposes the choice value and its controls, but the numbered
+    # label may be above the viewport. Anchor on the real add-choice control,
+    # then verify that an existing starter choice and its metadata fields are visible.
+    scroll_to_text("＋ إضافة اختيار")
+    choice_ui = visible_text()
+    choice_markers = ("افتح الباب بحذر", "انظر من العين السحرية", "تابع ما بدأته")
+    if not any(marker in choice_ui for marker in choice_markers):
+        raise RuntimeError(
+            "No sample choice value is visible in the choices editor. "
+            f"Current UI: {choice_ui[:1200]}"
+        )
+    require_visible("شرط الظهور (اختياري)")
+    require_visible("تأثير الاختيار (اختياري)")
+    require_visible("الوجهة:")
     captures.append(capture("05-studio-choices.png"))
 
     scroll_to_text("مكتبة الأصول")
