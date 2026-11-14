@@ -85,7 +85,7 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                 )
             }
         }
-        if ("rain" in active || "heavy_rain" in active || "wind" in active) {
+        if ("rain" in active || "heavy_rain" in active) {
             // Three depth planes: fine distant rain, readable mid-rain and a few close streaks.
             val heavy = "heavy_rain" in active
             val windLean = if ("wind" in active) 0.72f else 0.28f
@@ -149,6 +149,20 @@ internal fun AtmosphereOverlay(effects: List<String>, theme: String, intensity: 
                     }
                     drawPath(fork, Color(0xFF252D25).copy(alpha = 0.42f * strength), style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.004f, cap = StrokeCap.Round))
                 }
+            }
+        }
+        if ("wind" in active && "rain" !in active && "heavy_rain" !in active) {
+            // Wind remains visible as soft, broken gusts even when rain is disabled.
+            for (i in 0..5) {
+                val phase = (drift * (0.72f + i * 0.035f) + i * 0.19f) % 1.2f
+                val x = (phase - 0.12f) * w
+                val y = h * (0.27f + i * 0.105f) + sin((drift * 2f * PI + i).toFloat()) * h * 0.012f
+                val gust = Path().apply {
+                    moveTo(x, y)
+                    cubicTo(x + w * 0.055f, y - h * 0.009f, x + w * 0.13f, y + h * 0.008f, x + w * 0.22f, y - h * 0.003f)
+                }
+                drawPath(gust, Color(0xFFB3C0B7).copy(alpha = 0.10f * strength),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f, cap = StrokeCap.Round))
             }
         }
         if ("dead_leaves" in active) {

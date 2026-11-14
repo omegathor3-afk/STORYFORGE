@@ -1,103 +1,108 @@
 # بناء لعبة Android مستقلة من STORYFORGE
 
-يمكنك تحويل مشروع قصة واحد إلى APK مستقل؛ يظهر على الهاتف باسم اللعبة وأيقونتها، ويفتح اللعبة مباشرة دون الحاجة إلى استيراد ملف داخل Player.
+يمكن تحويل مشروع قصة واحد إلى APK مستقل؛ يظهر على الهاتف باسم اللعبة وأيقونتها، ويفتح اللعبة مباشرة دون الحاجة إلى استيراد ملف داخل Player.
 
-## مركز البناء داخل تطبيق STORYFORGE
+## الحالة الحالية: ما هو جاهز وما الذي يحتاج إعدادًا؟
 
-أضيفت شاشة **مركز بناء الألعاب** إلى شريط التنقل داخل التطبيق. عند فتحها:
+### داخل تطبيق Android — كود العميل موجود
 
-- تعرض القصة المحددة وعدد المشاهد والشخصيات والوسائط.
-- تشغّل فحص STORYFORGE الحالي وتعرض الأخطاء والتنبيهات قبل التصدير.
-- تمنع تصدير حزمة البناء من هذه الشاشة إذا كانت هناك أخطاء بنيوية.
-- تتيح تصدير ملف `.storygame` مباشرة، ثم فتح صفحة GitHub Actions من الهاتف لمتابعة بناء APK.
+شاشة **مركز بناء الألعاب** مرتبطة بالفعل بطبقة `CloudBuildApi`، وتنفذ منطق العميل التالي:
 
-**تنبيه واضح:** هذه الشاشة تسهّل التجهيز وتوصلك إلى سير العمل، لكنها ليست بعدُ خدمة بناء سحابية بنقرة واحدة. رفع الملف ومتابعة المهمة وتنزيل APK من داخل التطبيق تتطلب Backend آمنًا وتخزينًا مؤقتًا للمهمة. لا يحتوي تطبيق Android على GitHub token أو أسرار التوقيع.
+- تسجيل الدخول عبر OIDC Authorization Code + PKCE، دون Client Secret داخل التطبيق.
+- إنشاء ملف `.storygame` للمشروع المحدد داخل مساحة التطبيق المؤقتة.
+- طلب رابط رفع قصير العمر، ثم رفع الملف مباشرة إلى تخزين خاص عبر HTTPS.
+- إرسال طلب بناء، وحفظ رقم المهمة وحالتها محليًا.
+- تحديث حالة المهمة وطلب رابط تنزيل مؤقت للـArtifact، ثم تسليمه إلى Android Download Manager.
+- الاحتفاظ برمز الوصول في الذاكرة أثناء الجلسة فقط؛ لا يُحفظ في Preferences ولا يُرسل إلى Download Manager.
 
-## قبل البدء
+### Backend — الكود موجود لكنه غير منشور
 
-1. افتح STORYFORGE على الهاتف.
-2. افتح المشروع الذي تريد تحويله.
-3. استخدم تصدير اللعبة بصيغة `.storygame`.
-4. ارفع الملف إلى مكان يوفر **رابط تنزيل مباشرًا عبر HTTPS** ويمكن لـ GitHub Actions الوصول إليه دون تسجيل دخول.
+يوجد أساس الخدمة في `cloud-build-service/`، ويضم Vercel Functions وواجهات API وقاعدة PostgreSQL والتحقق من OIDC وGitHub App ورفع الملفات إلى Cloudflare R2.
 
-> رابط صفحة مشاركة Google Drive أو صفحة معاينة Dropbox ليس بالضرورة رابط تنزيل مباشر. اختبر الرابط في نافذة خاصة: يجب أن يبدأ تنزيل ملف ZIP نفسه، لا أن يفتح صفحة ويب.
+**الخدمة غير منشورة وغير مفعلة حاليًا.** لذلك وجود شاشة العميل والكود لا يعني أن البناء السحابي يعمل مباشرة بعد تثبيت التطبيق. يلزم نشر Backend وإعداد مزود الهوية وقاعدة البيانات وتطبيق GitHub وسلة R2 والمتغيرات السرية. لا توجد خدمة إنتاجية جاهزة يمكن للتطبيق الاتصال بها افتراضيًا.
 
-## إعداد توقيع Release مرة واحدة
+## إعداد Backend قبل استخدام البناء السحابي
 
-نسخة Debug مناسبة للاختبار. للحصول على Release موقّع يمكن توزيعه كتحديثات متتابعة، أنشئ مفتاح رفع خاصًا بك واحتفظ بنسخة احتياطية آمنة منه.
+1. أنشئ مشروع Vercel مرتبطًا بالمستودع `omegathor3-afk/STORYFORGE`، واجعل Root Directory هو `cloud-build-service`، مع Node.js 20 أو أحدث.
+2. جهّز PostgreSQL ونفّذ `cloud-build-service/db/schema.sql` مرة واحدة.
+3. أنشئ مزود OIDC يدعم Authorization Code + PKCE (S256) وتطبيقًا Native/Public بلا Client Secret.
+4. سجّل Redirect URI التالي كما هو: `com.storyforge.app:/oauth2redirect`.
+5. أنشئ GitHub App محدودًا بمستودع STORYFORGE فقط، وبصلاحيات Actions read/write وContents read. لا تستخدم Personal Access Token داخل التطبيق.
+6. أنشئ Cloudflare R2 bucket خاصًا، ومفتاح API محدودًا بهذه السلة، واضبط سياسة حذف دورية لمجلد `storygames/`.
+7. أضف متغيرات Vercel التالية من لوحة التحكم، لا إلى Git:
 
-1. ثبّت JDK على جهازك، ثم افتح PowerShell.
-2. أنشئ ملف المفتاح بالأمر التالي (غيّر كلمة المرور واحتفظ بها في مكان آمن):
-
-```powershell
-keytool -genkeypair -v -keystore storyforge-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias storyforge-upload
-```
-
-3. حوّل الملف إلى Base64 في PowerShell:
-
-```powershell
-$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\storyforge-upload.jks"))
-Set-Clipboard $b64
-```
-
-4. افتح مستودع GitHub ثم **Settings → Secrets and variables → Actions → New repository secret**، وأنشئ الأسرار التالية:
-
-| اسم السر | القيمة |
+| المتغير | الغرض |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | محتوى Base64 المنسوخ من PowerShell |
-| `ANDROID_STORE_PASSWORD` | كلمة مرور ملف keystore |
-| `ANDROID_KEY_ALIAS` | `storyforge-upload` |
-| `ANDROID_KEY_PASSWORD` | كلمة مرور المفتاح |
+| `DATABASE_URL` | اتصال PostgreSQL |
+| `DATABASE_SSL` | اختياري؛ TLS verification مفعّل افتراضيًا |
+| `OIDC_ISSUER` | Issuer الموثوق |
+| `OIDC_AUDIENCE` | Audience الخاص بالـAPI |
+| `OIDC_JWKS_URL` | رابط مفاتيح JWKS |
+| `GITHUB_APP_ID` | معرّف GitHub App |
+| `GITHUB_APP_PRIVATE_KEY` | المفتاح الخاص بالتطبيق |
+| `GITHUB_APP_INSTALLATION_ID` | Installation ID للمستودع |
+| `STORYGAME_ALLOWED_HOSTS` | قائمة النطاقات المسموح تنزيل ملفات القصص منها؛ ابدأ بنطاق R2 فقط |
+| `R2_ACCOUNT_ID` | حساب Cloudflare |
+| `R2_ACCESS_KEY_ID` | مفتاح R2 |
+| `R2_SECRET_ACCESS_KEY` | سر R2 |
+| `R2_BUCKET_NAME` | اسم السلة الخاصة |
+| `STORYFORGE_BUILD_REF` | الفرع الذي يحتوي Workflow البناء؛ الافتراضي الحالي `feature/cloud-build-center` |
+| `GITHUB_REPOSITORY_OWNER` | اختياري؛ الافتراضي `omegathor3-afk` |
+| `GITHUB_REPOSITORY_NAME` | اختياري؛ الافتراضي `STORYFORGE` |
 
-**مهم جدًا:** لا ترفع ملف `.jks` إلى GitHub، ولا تضع كلمات المرور في الكود أو المحادثات. لا تفقد المفتاح؛ ستحتاج إلى نفس مفتاح التوقيع لتحديث التطبيق خارج Google Play. استخدم Google Play App Signing عند النشر على المتجر واتبع إعداداته.
+8. شغّل `npm install` ثم `npm run typecheck` من مجلد `cloud-build-service`، وبعدها انشر المشروع على Vercel.
+9. من شاشة **مركز بناء الألعاب** أدخل Base URL لخدمة Vercel، وOIDC Issuer وClient ID وAPI Audience، ثم احفظ الإعدادات وسجّل الدخول.
 
-## تشغيل البناء
+تستخدم الخدمة المسارات التالية:
 
-1. افتح [مستودع STORYFORGE على GitHub](https://github.com/omegathor3-afk/STORYFORGE).
-2. انتقل إلى **Actions**.
-3. اختر **Build Standalone Story APK**.
-4. اضغط **Run workflow**.
-5. املأ الحقول:
+- `POST /api/uploads`: إنشاء روابط PUT/GET موقعة قصيرة العمر لملف `.storygame`.
+- `POST /api/build-jobs`: إنشاء مهمة بناء وإرسال GitHub Actions workflow dispatch.
+- `GET /api/build-jobs/:id`: قراءة حالة المهمة للمستخدم صاحبها.
+- `GET /api/build-jobs/:id/artifact`: إعادة توجيه مؤقتة إلى ملف النتائج بعد التحقق من ملكية المهمة.
+
+**لا تضع أسرار GitHub أو R2 أو توقيع APK في تطبيق Android أو المستودع.** كل المفاتيح التشغيلية تظل على الخادم.
+
+## البناء اليدوي حتى نشر الخدمة
+
+يمكنك استخدام GitHub Actions دون Backend إذا كان لديك رابط HTTPS مباشر لملف `.storygame` يمكن للـRunner تنزيله دون تسجيل دخول.
+
+1. افتح [مستودع STORYFORGE](https://github.com/omegathor3-afk/STORYFORGE).
+2. افتح Actions ثم **Build Standalone Story APK** واضغط Run workflow.
+3. أدخل القيم التالية:
 
 | الحقل | المطلوب |
 |---|---|
-| `storygame_url` | رابط HTTPS مباشر لملف `.storygame` — إلزامي |
-| `game_title` | الاسم الظاهر أسفل أيقونة التطبيق؛ اتركه فارغًا لاستخدام عنوان القصة |
-| `application_id` | معرّف فريد مثل `com.yourstudio.mygame`؛ اتركه فارغًا ليُنشأ تلقائيًا |
+| `storygame_url` | رابط HTTPS مباشر لحزمة `.storygame` |
+| `game_title` | الاسم الظاهر أسفل أيقونة التطبيق؛ اختياري |
+| `application_id` | معرّف فريد مثل `com.yourstudio.mygame`؛ اختياري |
 | `icon_url` | رابط HTTPS مباشر لأيقونة PNG مربعة؛ اختياري |
-| `version_name` | رقم الإصدار مثل `1.0.0` |
-| `version_code` | رقم صحيح موجب؛ زد الرقم عند كل تحديث |
-| `build_type` | `debug` للتجربة أو `release` لنسخة موقّعة |
+| `version_name` | رقم مثل `1.0.0` |
+| `version_code` | رقم موجب، وزده مع كل تحديث |
+| `build_type` | `debug` للتجربة أو `release` لنسخة موقعة |
 
-6. اضغط **Run workflow** وانتظر حتى تصبح النتيجة خضراء.
-7. افتح تشغيل Workflow الناجح، ثم قسم **Artifacts**، ونزّل الملف الذي يبدأ اسمه بـ `STORYFORGE-GAME-`.
-8. فك ضغط الملف، ثم انقل APK إلى هاتف Android وثبّته.
+4. انتظر نجاح Workflow، ثم نزّل Artifact باسم يبدأ بـ `STORYFORGE-GAME-`.
+5. فك ضغط ZIP وثبّت APK على جهاز Android.
 
-عند اختيار `release` يجب أن تكون أسرار التوقيع الأربعة قد أُعدّت أولًا. إذا لم تكن موجودة، سيتوقف البناء برسالة توضح السر الناقص بدلًا من إنتاج نسخة غير موقعة.
+### توقيع Release الحقيقي
 
-## قواعد مهمة للتحديثات
+- Debug لا يحتاج مفتاح توقيع إنتاجيًا.
+- Release يتطلب أسرار GitHub Actions الأربعة: `ANDROID_KEYSTORE_BASE64` و`ANDROID_STORE_PASSWORD` و`ANDROID_KEY_ALIAS` و`ANDROID_KEY_PASSWORD`.
+- استخدم مفتاحك الخاص الذي تحتفظ بنسخة احتياطية منه، ولا تضعه في التطبيق أو المستودع.
+- مفتاح CI المؤقت يُنشأ ويُتلف داخل بيئة الاختبار للتحقق فقط؛ **ليس مفتاحًا صالحًا لتوقيع إصدار إنتاجي أو تحديث لعبة حقيقية**.
 
-- احتفظ بنفس `application_id` عند إصدار تحديث للعبة نفسها؛ تغييره يجعل Android يتعامل معها كتطبيق مختلف.
-- زد `version_code` مع كل تحديث. لا تعِد استخدام رقم إصدار سابق.
-- استخدم أيقونة PNG مربعة وواضحة، ويفضل أن تكون صغيرة الحجم.
-- كل لعبة مستقلة لها معرّف تطبيق مختلف إذا أردت تثبيت عدة ألعاب جنبًا إلى جنب.
-- احتفظ بمفتاح التوقيع نفسه لكل تحديث من خارج Google Play.
+## قواعد التحديث
 
-## ما الذي ينتج؟
+- احتفظ بنفس `application_id` عند تحديث اللعبة نفسها.
+- زد `version_code` مع كل إصدار.
+- استخدم مفتاح التوقيع نفسه لتحديثات Release خارج Google Play.
+- استخدم PNG مربعة صغيرة للأيقونة.
+- لكل لعبة تريد تثبيتها بجانب غيرها، استخدم Application ID مختلفًا.
 
-- APK مستقل يضم ملف القصة داخل `assets/default.storygame` ويفتحه تلقائيًا.
-- اسم تطبيق ومعرّف Android قابلان للتخصيص، وأيقونة مخصصة اختيارية.
-- تحقق آلي من هوية التطبيق، وسلامة أرشيف القصة، وصحة توقيع APK.
-- ملف SHA-256 وملف BUILD-INFO ضمن Artifact الخاص بالبناء.
-- Debug للتجربة، أو Release موقّع عند تهيئة الأسرار.
+## ما الذي يتحقق منه Workflow؟
 
-## حل المشاكل
+- هوية الحزمة واسم التطبيق والإصدار.
+- وجود `assets/default.storygame` داخل APK.
+- سلامة ZIP الداخلي ووجود `game-manifest.json`.
+- صحة توقيع APK عبر `apksigner`.
+- SHA-256 وملف BUILD-INFO داخل Artifact.
 
-- **فشل تنزيل القصة:** تأكد أن الرابط HTTPS مباشر، متاح دون تسجيل دخول، ويعيد ملف ZIP وليس صفحة HTML.
-- **رفض الملف:** أعد تصدير القصة من STORYFORGE وتأكد أن الحزمة تحتوي مشروعًا واحدًا صالحًا.
-- **فشل الأيقونة:** استخدم PNG حقيقيًا، مربع الأبعاد، وأقل من 3 MB.
-- **فشل توقيع Release:** راجع أسماء الأسرار الأربعة وكلمات المرور وملف keystore؛ لا تشارك المفتاح أو كلمة المرور مع أحد.
-- **التطبيق لا يُحدّث النسخة السابقة:** تحقق من ثبات `application_id` ومفتاح التوقيع وزيادة `version_code`.
-- **لا يظهر Artifact:** لا بد أن ينتهي التشغيل بنجاح؛ افتح سجل Actions لمعرفة الخطوة التي فشلت.
-
-[فتح صفحة Actions](https://github.com/omegathor3-afk/STORYFORGE/actions)
