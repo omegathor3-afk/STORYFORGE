@@ -86,6 +86,12 @@ class UiLabelMatchingTests(unittest.TestCase):
         )
         self.assertIsNone(CAPTURE.pixel_launcher_anr_close_point(root))
 
+    def test_player_start_label_matches_the_real_arabic_player_cta(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('PLAYER_START_LABEL = "ابدأ المغامرة"', source)
+        self.assertIn("require_tap(PLAYER_START_LABEL, contains=True)", source)
+        self.assertTrue(CAPTURE.matches_ui_label("ابدأ المغامرة  ▶", "ابدأ المغامرة", contains=True))
+
     def test_screen_text_reads_recover_launcher_anr_without_duplicate_dumps(self):
         source = SCRIPT.read_text(encoding="utf-8")
         visible_body = source[source.index("def visible_text"):source.index("def matches_ui_label")]
