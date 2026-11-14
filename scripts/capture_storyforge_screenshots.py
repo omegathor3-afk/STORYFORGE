@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 OUT = Path("screenshots")
+PLAYER_START_LABEL = "ابدأ المغامرة"
 DIAG = OUT / "diagnostics"
 OUT.mkdir(exist_ok=True)
 
@@ -460,7 +461,7 @@ def main() -> None:
     # The cinematic player first presents the story's own title screen. Enter
     # the adventure explicitly before checking the scene and its live choices.
     require_visible("The Ashen Bell")
-    require_tap("ابدأ اللعبة", contains=True)
+    require_tap(PLAYER_START_LABEL, contains=True)
     require_visible("الطرقات على الباب", timeout_seconds=12)
     require_visible("Follow the bell", timeout_seconds=12)
     time.sleep(0.8)
