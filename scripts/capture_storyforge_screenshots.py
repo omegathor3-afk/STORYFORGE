@@ -301,21 +301,13 @@ def main() -> None:
 
     scroll_back_to_text("الاختيار 1")
     choice_ui = visible_text()
-    sample_choice = "Open the old door carefully"
-    if sample_choice not in choice_ui:
-        if not tap_text("الاختيار 1", contains=True):
-            raise RuntimeError(
-                "The first choice text field is not tappable after scrolling it into view. "
-                f"Current UI: {choice_ui[:1200]}"
-            )
-        type_ascii(sample_choice)
-        adb("shell", "input", "keyevent", "4")
-        time.sleep(0.8)
-        choice_ui = visible_text()
-
+    # The horror starter template already provides a meaningful Arabic choice.
+    # Keep that original value instead of appending an ASCII test string to it:
+    # mixed-direction text made the editor/player screenshots look corrupted.
+    sample_choice = "انظر من العين السحرية"
     if sample_choice not in choice_ui:
         raise RuntimeError(
-            "The sample choice text was not committed to the visible choice field. "
+            "The starter choice text is not visible in the choices editor. "
             f"Current UI: {choice_ui[:1200]}"
         )
     require_visible("الاختيار 1")
