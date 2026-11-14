@@ -289,18 +289,36 @@ def main() -> None:
         time.sleep(0.8)
     captures.append(capture("04-studio-dialogue.png"))
 
-    # The section heading can sit at the viewport edge while its actual controls remain hidden.
-    # Scroll to the add-choice control so this capture proves the choices editor is on screen.
+    # The add-choice action sits below the choice text field. Reaching the button
+    # alone can leave the first field clipped above the viewport, so scroll back to
+    # the numbered field before asserting or capturing it.
     scroll_to_text("＋ إضافة اختيار")
     choice_ui = visible_text()
-    # Compose exposes only the part of the option card currently in the viewport;
-    # its numbered label can be above the fold while the choice value and controls remain visible.
-    choice_markers = ("افتح الباب بحذر", "انظر من العين السحرية", "تابع ما بدأته")
-    if not any(marker in choice_ui for marker in choice_markers):
+    if "شرط الظهور (اختياري)" not in choice_ui and "تأثير الاختيار (اختياري)" not in choice_ui:
+        # A scene without a choice row needs one before the fixture can be populated.
+        require_tap("＋ إضافة اختيار")
+        time.sleep(0.8)
+
+    scroll_back_to_text("الاختيار 1")
+    choice_ui = visible_text()
+    sample_choice = "Open the old door carefully"
+    if sample_choice not in choice_ui:
+        if not tap_text("الاختيار 1", contains=True):
+            raise RuntimeError(
+                "The first choice text field is not tappable after scrolling it into view. "
+                f"Current UI: {choice_ui[:1200]}"
+            )
+        type_ascii(sample_choice)
+        adb("shell", "input", "keyevent", "4")
+        time.sleep(0.8)
+        choice_ui = visible_text()
+
+    if sample_choice not in choice_ui:
         raise RuntimeError(
-            "No sample choice value is visible in the choices editor. "
+            "The sample choice text was not committed to the visible choice field. "
             f"Current UI: {choice_ui[:1200]}"
         )
+    require_visible("الاختيار 1")
     require_visible("شرط الظهور (اختياري)")
     require_visible("تأثير الاختيار (اختياري)")
     require_visible("الوجهة:")
