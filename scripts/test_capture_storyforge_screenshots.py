@@ -92,6 +92,29 @@ class UiLabelMatchingTests(unittest.TestCase):
         self.assertIn("require_tap(PLAYER_START_LABEL, contains=True)", source)
         self.assertTrue(CAPTURE.matches_ui_label("ابدأ المغامرة  ▶", "ابدأ المغامرة", contains=True))
 
+    def test_library_and_studio_capture_require_the_project_title_on_screen(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        library = source[source.index('tap_bottom_tab("المكتبة", 0)'):source.index('tap_bottom_tab("الاستوديو", 1)')]
+        studio = source[source.index('tap_bottom_tab("الاستوديو", 1)'):source.index('# Scene fields')]
+        self.assertIn('scroll_to_text("The Ashen Bell", max_swipes=4)', library)
+        self.assertIn('section_is_visible("The Ashen Bell")', library)
+        self.assertIn('section_is_visible("The Ashen Bell")', studio)
+
+    def test_build_center_places_active_project_summary_before_connection_setup(self):
+        build_center = SCRIPT.parent.parent / "app/src/main/java/com/storyforge/app/BuildCenter.kt"
+        source = build_center.read_text(encoding="utf-8")
+        summary = source.index("project?.let { BuildProjectSummary(it, diagnostics) }")
+        connection = source.index('Text("الاتصال بخدمة البناء"')
+        self.assertLess(summary, connection)
+
+    def test_academy_is_connected_to_the_active_project(self):
+        main_activity = SCRIPT.parent.parent / "app/src/main/java/com/storyforge/app/MainActivity.kt"
+        academy = SCRIPT.parent.parent / "app/src/main/java/com/storyforge/app/LearningCenter.kt"
+        main_source = main_activity.read_text(encoding="utf-8")
+        academy_source = academy.read_text(encoding="utf-8")
+        self.assertIn("LearningCenter(project = current", main_source)
+        self.assertIn('Text(activeProject.title', academy_source)
+
     def test_player_capture_checks_the_real_arabic_starter_choice(self):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('require_visible("انظر من العين السحرية", timeout_seconds=12)', source)
