@@ -92,6 +92,27 @@ class UiLabelMatchingTests(unittest.TestCase):
         self.assertIn("require_tap(PLAYER_START_LABEL, contains=True)", source)
         self.assertTrue(CAPTURE.matches_ui_label("ابدأ المغامرة  ▶", "ابدأ المغامرة", contains=True))
 
+    def test_player_capture_checks_the_real_arabic_starter_choice(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('require_visible("انظر من العين السحرية", timeout_seconds=12)', source)
+        self.assertIn('player_choice_markers = ("انظر من العين السحرية", "افتح الباب بحذر")', source)
+        self.assertNotIn('require_visible("Follow the bell"', source)
+        self.assertNotIn('"Follow the bell" not in player_ui', source)
+
+    def test_academy_capture_scrolls_the_sample_project_into_the_viewport(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        academy = source[source.index('tap_bottom_tab("التعلّم", 3)'):source.index('tap_bottom_tab("بناء APK", 4)')]
+        self.assertIn('scroll_to_text("The Ashen Bell", max_swipes=24)', academy)
+        self.assertIn('section_is_visible("The Ashen Bell")', academy)
+        self.assertLess(academy.index('section_is_visible("The Ashen Bell")'), academy.index('capture("10-learning-academy.png")'))
+
+    def test_build_center_capture_scrolls_the_sample_project_into_the_viewport(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        build = source[source.index('tap_bottom_tab("بناء APK", 4)'):source.index('manifest = {')]
+        self.assertIn('scroll_to_text("The Ashen Bell", max_swipes=24)', build)
+        self.assertIn('section_is_visible("The Ashen Bell")', build)
+        self.assertLess(build.index('section_is_visible("The Ashen Bell")'), build.index('capture("11-build-center.png")'))
+
     def test_screen_text_reads_recover_launcher_anr_without_duplicate_dumps(self):
         source = SCRIPT.read_text(encoding="utf-8")
         visible_body = source[source.index("def visible_text"):source.index("def matches_ui_label")]
