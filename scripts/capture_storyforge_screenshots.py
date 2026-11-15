@@ -463,10 +463,11 @@ def main() -> None:
     require_visible("The Ashen Bell")
     require_tap(PLAYER_START_LABEL, contains=True)
     require_visible("الطرقات على الباب", timeout_seconds=12)
-    require_visible("Follow the bell", timeout_seconds=12)
+    require_visible("انظر من العين السحرية", timeout_seconds=12)
     time.sleep(0.8)
     player_ui = visible_text()
-    if "الطرقات على الباب" not in player_ui or "Follow the bell" not in player_ui:
+    player_choice_markers = ("انظر من العين السحرية", "افتح الباب بحذر")
+    if "الطرقات على الباب" not in player_ui or not any(marker in player_ui for marker in player_choice_markers):
         raise RuntimeError(f"Immersive scene or its sample choice did not open: {player_ui[:1200]}")
     captures.append(capture("09-immersive-atmosphere-player.png"))
     adb("shell", "settings", "put", "global", "window_animation_scale", "1.0")
@@ -490,8 +491,12 @@ def main() -> None:
     academy_ui = visible_text()
     if not any(token in academy_ui for token in ("أكاديمية", "التعلّم", "تعلم")):
         raise RuntimeError(f"Learning center did not open: {academy_ui[:1200]}")
-    if "The Ashen Bell" not in academy_ui:
-        raise RuntimeError(f"Academy is missing the active sample project context: {academy_ui[:1200]}")
+    # The active project card can exist in Compose semantics while still being
+    # outside the screenshot viewport. Bring the actual card into view first.
+    scroll_to_text("The Ashen Bell", max_swipes=24)
+    academy_ui = visible_text()
+    if "The Ashen Bell" not in academy_ui or not section_is_visible("The Ashen Bell"):
+        raise RuntimeError(f"Academy does not visibly show the active sample project: {academy_ui[:1200]}")
     captures.append(capture("10-learning-academy.png"))
 
     tap_bottom_tab("بناء APK", 4)
@@ -499,8 +504,12 @@ def main() -> None:
     build_ui = visible_text()
     if not any(token in build_ui for token in ("مركز بناء الألعاب", "بناء APK", "بناء الألعاب")):
         raise RuntimeError(f"Build center did not open: {build_ui[:1200]}")
-    if "The Ashen Bell" not in build_ui:
-        raise RuntimeError(f"Build Center is missing the active sample project: {build_ui[:1200]}")
+    # Require the project summary card itself to be on screen, not merely
+    # present somewhere in the off-screen Compose semantics tree.
+    scroll_to_text("The Ashen Bell", max_swipes=24)
+    build_ui = visible_text()
+    if "The Ashen Bell" not in build_ui or not section_is_visible("The Ashen Bell"):
+        raise RuntimeError(f"Build Center does not visibly show the active sample project: {build_ui[:1200]}")
     captures.append(capture("11-build-center.png"))
 
     manifest = {
@@ -513,6 +522,13 @@ def main() -> None:
             "sdk": adb("shell", "getprop", "ro.build.version.sdk"),
         },
         "fixture_project": "The Ashen Bell",
+        "sample_project_visibility": {
+            "library": True,
+            "studio": True,
+            "preview": True,
+            "academy": True,
+            "build_center": True,
+        },
         "screenshots": captures,
         "video_review": {
             "file": "09-immersive-atmosphere-review.mp4",
