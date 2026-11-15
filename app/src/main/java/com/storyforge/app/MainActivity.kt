@@ -40,6 +40,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
@@ -601,9 +602,48 @@ class MainActivity : ComponentActivity() {
                                             placeholder = { Text("اكتب وصف المكان والأحداث والحوار...") })
                                         FieldLabel("مؤثرات الجو لهذا المشهد")
                                         Text("اختار طبقات بصرية تظهر أثناء اللعب. تقدر تجمع أكتر من مؤثر في نفس الوقت.", color = Muted, fontSize = 11.sp)
+                                        Spacer(Modifier.height(10.dp))
+                                        Text("معاينة حية للمؤثرات", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Box(
+                                            Modifier.fillMaxWidth().height(154.dp)
+                                                .clip(WeatheredShape)
+                                                .background(Color(0xFF0A100D))
+                                        ) {
+                                            SceneDepthOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                layer = "far",
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            AtmosphereOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            SceneDepthOverlay(
+                                                effects = scene.atmosphereEffects,
+                                                theme = current.visualTheme,
+                                                layer = "near",
+                                                intensity = scene.atmosphereIntensity,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            Column(
+                                                Modifier.align(Alignment.BottomStart).padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text("المشهد الآن", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    if (scene.atmosphereEffects.isEmpty()) "اختر مؤثرًا لتشاهد تغيّر الأجواء هنا"
+                                                    else "\u2068${scene.atmosphereEffects.size}\u2069 طبقة جوية نشطة · \u2068${(scene.atmosphereIntensity * 100).toInt()}٪\u2069",
+                                                    color = Color(0xFFE0E3DA), fontSize = 10.sp
+                                                )
+                                            }
+                                        }
                                         Text("تركيبات أجواء جاهزة", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         val atmospherePresets = listOf(
-                                            "غابة ميتة" to setOf("dead_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "vignette"),
+                                            "غابة ميتة" to setOf("dead_forest", "distant_forest", "fog", "ground_fog", "branches", "dead_leaves", "moving_shadows", "wind", "vignette"),
                                             "مطر المطاردة" to setOf("heavy_rain", "rain", "fog", "ground_fog", "black_shadows", "lightning", "crows", "vignette"),
                                             "مستنقع فطري" to setOf("spores", "dense_fog", "ground_fog", "floating_dust", "moon_glow", "insects", "pulsing_fungus"),
                                             "ليلة القمر" to setOf("moon_glow", "light_shafts", "fireflies", "watching_eyes", "fog", "vignette"),
@@ -645,7 +685,7 @@ class MainActivity : ComponentActivity() {
                                         Spacer(Modifier.height(8.dp))
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("شدة الأجواء", color = Color(0xFFE0C58C), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                            Text("${(scene.atmosphereIntensity * 100).toInt()}%", color = Muted, fontSize = 12.sp)
+                                            Text("\u2068${(scene.atmosphereIntensity * 100).toInt()}%\u2069", color = Muted, fontSize = 12.sp)
                                         }
                                         Slider(
                                             value = scene.atmosphereIntensity.coerceIn(0f, 1f),
@@ -1108,7 +1148,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             3 -> {
-                                LearningCenter(onOpenStudio = { page = 1 })
+                                LearningCenter(project = current, onOpenStudio = { page = 1 })
                             }
                             4 -> {
                                 BuildCenter(
@@ -1162,10 +1202,16 @@ class MainActivity : ComponentActivity() {
                                     onStartBuild = { title, appId, version, versionCode, buildType ->
                                         val token = cloudAccessToken
                                         val projectToBuild = current
+                                        val buildInputValidation = runCatching {
+                                            validateCloudBuildInputs(title, appId, version, versionCode, buildType)
+                                        }
                                         if (token == null) {
                                             cloudMessage = "سجّل الدخول أولًا."
                                         } else if (projectToBuild == null) {
                                             cloudMessage = "اختر قصة من المكتبة أولًا."
+                                        } else if (buildInputValidation.isFailure) {
+                                            cloudMessage = buildInputValidation.exceptionOrNull()?.message
+                                                ?: "رقم الإصدار غير صالح."
                                         } else {
                                             cloudBusy = true
                                             cloudMessage = "جارٍ تجهيز حزمة القصة ورفعها إلى التخزين الخاص..."

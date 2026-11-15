@@ -36,7 +36,9 @@ private val guideQuizzes = listOf(
     GuideQuiz("متى يظهر اختيار عليه شرط trust>=1؟", listOf("دائمًا", "عندما تكون قيمة trust واحدًا أو أكثر", "عندما تكون القيمة صفرًا فقط"), 1),
     GuideQuiz("ما الذي يضيفه ملف الصوت للمشهد؟", listOf("يغير وجهة الاختيار", "يصنع خلفية صوتية أو مؤثرًا", "ينشئ متغيرًا تلقائيًا"), 1),
     GuideQuiz("ما أفضل طريقة لاكتشاف مسار مكسور؟", listOf("تجربة الاختيارات والنهايات من المعاينة", "تغيير لون التطبيق", "إغلاق المشروع دون حفظ"), 0),
-    GuideQuiz("هل ملف .storygame هو APK مستقل؟", listOf("نعم، دائمًا", "لا، هو حزمة محتوى تُفتح في Player", "هو ملف صورة"), 1)
+    GuideQuiz("هل ملف .storygame هو APK مستقل؟", listOf("نعم، دائمًا", "لا، هو حزمة محتوى تُفتح في Player", "هو ملف صورة"), 1),
+    GuideQuiz("ما فائدة المعاينة الحية للمؤثرات؟", listOf("تغيير عنوان المشروع", "رؤية طبقات الجو قبل تشغيل القصة", "حذف خلفية المشهد"), 1),
+    GuideQuiz("ما أفضل ترتيب لعناصر البيئة؟", listOf("وضع كل العناصر في نقطة واحدة", "توزيع العناصر بين الخلفية والمقدمة حسب العمق", "إخفاء كل العناصر"), 1),
 )
 
 private val guideLessons = listOf(
@@ -63,11 +65,17 @@ private val guideLessons = listOf(
         "العب قصتك من البداية حتى كل نهاية صنعتها.", "اختبر القصة كأنك لاعب لا يعرف ما كنت تقصده."),
     GuideLesson("صدّر لعبتك وشاركها", "دقيقتان", "احتفظ بنسخة قابلة للنقل، أو صدّر حزمة اللعبة لتشغيلها في Player.",
         listOf("من تبويب المعاينة اختر تصدير اللعبة كحزمة مستقلة.", "احفظ ملف storygame في مكان يسهل الوصول إليه.", "افتح STORYFORGE PLAYER واستورد الحزمة.", "استخدم النسخة الاحتياطية ZIP لحفظ المشاريع والوسائط كاملة."),
-        "صدّر مشروعك التجريبي وافتحه في STORYFORGE PLAYER.", "ملف storygame حزمة محتوى؛ ليس APK مستقلًا بحد ذاته.")
+        "صدّر مشروعك التجريبي وافتحه في STORYFORGE PLAYER.", "ملف storygame حزمة محتوى؛ ليس APK مستقلًا بحد ذاته."),
+    GuideLesson("صمم أجواء المشهد", "4 دقائق", "اصنع طقسًا ومزاجًا بصريًا متناسقًا، وشاهد النتيجة قبل تشغيل القصة.",
+        listOf("افتح مؤثرات الجو لهذا المشهد في الاستوديو.", "اختر تركيبة جاهزة مثل غابة ميتة أو مستنقع فطري.", "راقب المعاينة الحية، ثم أضف أو احذف طبقات منفردة.", "اضبط شدة الأجواء وجرّب المشهد في اللاعب السينمائي."),
+        "اصنع مشهدًا يجمع الضباب والرياح وأوراقًا ميتة، ثم جرّب شدة مختلفة.", "ابدأ بطبقتين أو ثلاث؛ كثرة المؤثرات قد تخفي الصورة والنص."),
+    GuideLesson("وزّع عناصر البيئة والعمق", "4 دقائق", "الأشجار والصخور والفوانيس والجذور تصنع طبقات مكانية بدل خلفية مسطحة.",
+        listOf("افتح تخطيطات البيئة الجاهزة في الاستوديو.", "اختر عناصر تناسب المكان، مثل شجرة ميتة وصخور وسياج مكسور.", "ضع بعض العناصر في الخلفية واترك عناصر المقدمة قريبة من اللاعب.", "عاين المشهد وتأكد أن العناصر لا تغطي الحوار أو الاختيارات."),
+        "جهّز غابة مهجورة بثلاثة عناصر خلفية وعنصرين في المقدمة.", "استخدم اختلاف الحجم والموضع لصناعة العمق، واترك مساحة قراءة واضحة."),
 )
 
 @Composable
-fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
+fun LearningCenter(project: StoryProject? = null, onOpenStudio: (() -> Unit)? = null) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("storyforge_learning", Context.MODE_PRIVATE) }
     val completed = remember { mutableStateListOf<Int>().apply {
@@ -82,6 +90,24 @@ fun LearningCenter(onOpenStudio: (() -> Unit)? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("أكاديمية STORYFORGE", color = Color(0xFFD6B477), fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("دليل عملي تفاعلي يعلمك صناعة لعبة قصصية خطوة بخطوة، من أول مشروع حتى تصدير اللعبة.", color = Color(0xFF9BA4AE), lineHeight = 22.sp)
+        project?.let { activeProject ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF202820)), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("تطبيق الدروس على مشروعك الحالي", color = Color(0xFFD6B477), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(activeProject.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${activeProject.scenes.size} مشاهد · ${activeProject.characters.size} شخصيات · ${activeProject.assets.size} وسائط",
+                        color = Color(0xFF9BA4AE), fontSize = 11.sp
+                    )
+                    if (activeProject.description.isNotBlank()) {
+                        Text(activeProject.description, color = Color(0xFFB8C2B8), fontSize = 12.sp, lineHeight = 19.sp)
+                    }
+                    if (onOpenStudio != null) {
+                        TextButton(onClick = onOpenStudio) { Text("افتح المشروع في الاستوديو", color = Color(0xFFD6B477)) }
+                    }
+                }
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF171C22)), shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

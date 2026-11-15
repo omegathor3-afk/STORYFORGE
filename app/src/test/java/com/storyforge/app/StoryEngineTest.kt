@@ -3,6 +3,7 @@ package com.storyforge.app
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -200,4 +201,42 @@ class StoryEngineTest {
         assertEquals(values, applyStoryEffect("keys++1", values))
         assertEquals(values, applyStoryEffect("", values))
     }
+    @Test
+    fun cloudBuildVersionCodeMustBePositiveAndWithinAndroidLimit() {
+        assertEquals(1, parseCloudBuildVersionCode("1"))
+        assertEquals(2_100_000_000, parseCloudBuildVersionCode("2100000000"))
+
+        listOf("", "0", "-1", "1.0", "abc", "2100000001").forEach { raw ->
+            try {
+                parseCloudBuildVersionCode(raw)
+                fail("Expected invalid versionCode to be rejected: $raw")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message?.contains("رقم الإصدار") == true)
+            }
+        }
+    }
+
+    @Test
+    fun cloudBuildInputsAreValidatedBeforeUpload() {
+        validateCloudBuildInputs(" The Ashen Bell ", " com.example.ashen ", "1.0.0", " 1 ", "debug")
+        validateCloudBuildInputs("A valid title", "", "2.4.1", "2100000000", "release")
+
+        val invalidInputs = listOf<() -> Unit>(
+            { validateCloudBuildInputs("", "", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("A".repeat(41), "", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "bad-id.package", "1.0.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0", "1", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0.0", "0", "debug") },
+            { validateCloudBuildInputs("The Ashen Bell", "", "1.0.0", "1", "release-signed") }
+        )
+        invalidInputs.forEachIndexed { index, validate ->
+            try {
+                validate()
+                fail("Expected invalid cloud build input set $index to be rejected")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message?.isNotBlank() == true)
+            }
+        }
+    }
+
 }
