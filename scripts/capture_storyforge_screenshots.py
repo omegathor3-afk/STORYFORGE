@@ -364,6 +364,8 @@ def main() -> None:
         raise RuntimeError(f"Project dialog is still open after confirmation: {current_ui[:1000]}")
     require_visible("The Ashen Bell")
     require_visible("فحص القصة")
+    if not section_is_visible("The Ashen Bell"):
+        raise RuntimeError("The active sample project title is not visible in Studio.")
 
     # The create action selects the new project and opens Studio (page 1).
     captures.append(capture("01-studio-project.png"))
@@ -372,13 +374,18 @@ def main() -> None:
     # screenshot is not useful evidence for the real-project workflow.
     tap_bottom_tab("المكتبة", 0)
     scroll_to_top()
+    scroll_to_text("The Ashen Bell", max_swipes=4)
     require_visible("The Ashen Bell")
+    if not section_is_visible("The Ashen Bell"):
+        raise RuntimeError("The active sample project card is not visible in the library.")
     if has_exact_text("مشروع جديد"):
         raise RuntimeError("Unexpected project dialog while viewing the populated library.")
     captures.append(capture("00-library-project.png"))
     tap_bottom_tab("الاستوديو", 1)
     scroll_to_top()
     require_visible("The Ashen Bell")
+    if not section_is_visible("The Ashen Bell"):
+        raise RuntimeError("The active sample project title is not visible in Studio.")
 
     # Scene fields are farther down the editor's scrollable column; verify the
     # starter narrative only after bringing its field into the actual viewport.
@@ -446,8 +453,8 @@ def main() -> None:
     tap_bottom_tab("المعاينة", 2)
     scroll_to_top()
     preview_ui = visible_text()
-    if "The Ashen Bell" not in preview_ui:
-        raise RuntimeError(f"Preview is missing the active sample story: {preview_ui[:1200]}")
+    if "The Ashen Bell" not in preview_ui or not section_is_visible("The Ashen Bell"):
+        raise RuntimeError(f"Preview does not visibly show the active sample story: {preview_ui[:1200]}")
     if not any(token in preview_ui for token in ("معاينة تفاعلية", "الطرقات على الباب", "مشهد")):
         raise RuntimeError(f"Story preview did not open: {preview_ui[:1200]}")
     require_visible("ابدأ التجربة السينمائية الغامرة")
