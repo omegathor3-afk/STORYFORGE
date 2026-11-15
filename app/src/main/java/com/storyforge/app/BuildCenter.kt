@@ -34,6 +34,30 @@ private val BuildGreen = Color(0xFF8CBAA5)
 private val BuildRed = Color(0xFFE18B83)
 
 @Composable
+private fun BuildProjectSummary(project: StoryProject, diagnostics: List<StoryDiagnostic>) {
+                Card(colors = CardDefaults.cardColors(containerColor = BuildPanel), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(project.title, color = BuildGold, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                        Text(project.description.ifBlank { "لا يوجد وصف مضاف." }, color = BuildMuted, fontSize = 12.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("المشاهد: ${project.scenes.size}", color = Color.White, fontSize = 12.sp)
+                            Text("الشخصيات: ${project.characters.size}", color = Color.White, fontSize = 12.sp)
+                            Text("الوسائط: ${project.assets.size}", color = Color.White, fontSize = 12.sp)
+                        }
+                        val errors = diagnostics.count { it.isError }
+                        val warnings = diagnostics.size - errors
+                        Text(if (errors == 0) "✓ لا توجد أخطاء بنيوية مكتشفة" else "● يوجد ${errors} أخطاء تحتاج مراجعة",
+                            color = if (errors == 0) BuildGreen else BuildRed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        if (warnings > 0) Text("تنبيهات: $warnings", color = BuildGold, fontSize = 12.sp)
+                        diagnostics.take(5).forEach { issue ->
+                            Text("• ${issue.message}", color = if (issue.isError) BuildRed else BuildMuted, fontSize = 11.sp)
+                        }
+                        if (diagnostics.size > 5) Text("و ${diagnostics.size - 5} ملاحظات أخرى في فحص القصة داخل الاستوديو.", color = BuildMuted, fontSize = 11.sp)
+                    }
+                }
+}
+
+@Composable
 internal fun BuildCenter(
     project: StoryProject?,
     diagnostics: List<StoryDiagnostic>,
@@ -77,6 +101,10 @@ internal fun BuildCenter(
         Text("مركز بناء الألعاب", color = BuildGold, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Text("حوّل قصتك إلى حزمة لعبة، ثم اطلب إنشاء APK مستقل ومتابعة النتيجة من داخل التطبيق.", color = BuildMuted, fontSize = 13.sp)
 
+        // Keep the selected story visible before connection settings so users can
+        // verify exactly which project will be packaged and built.
+        project?.let { BuildProjectSummary(it, diagnostics) }
+
         Card(colors = CardDefaults.cardColors(containerColor = BuildPanel), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text("الاتصال بخدمة البناء", color = BuildGold, fontWeight = FontWeight.Bold)
@@ -103,26 +131,6 @@ internal fun BuildCenter(
                 }
             }
         } else {
-            Card(colors = CardDefaults.cardColors(containerColor = BuildPanel), shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(project.title, color = BuildGold, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                    Text(project.description.ifBlank { "لا يوجد وصف مضاف." }, color = BuildMuted, fontSize = 12.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("المشاهد: ${project.scenes.size}", color = Color.White, fontSize = 12.sp)
-                        Text("الشخصيات: ${project.characters.size}", color = Color.White, fontSize = 12.sp)
-                        Text("الوسائط: ${project.assets.size}", color = Color.White, fontSize = 12.sp)
-                    }
-                    val errors = diagnostics.count { it.isError }
-                    val warnings = diagnostics.size - errors
-                    Text(if (errors == 0) "✓ لا توجد أخطاء بنيوية مكتشفة" else "● يوجد ${errors} أخطاء تحتاج مراجعة",
-                        color = if (errors == 0) BuildGreen else BuildRed, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    if (warnings > 0) Text("تنبيهات: $warnings", color = BuildGold, fontSize = 12.sp)
-                    diagnostics.take(5).forEach { issue ->
-                        Text("• ${issue.message}", color = if (issue.isError) BuildRed else BuildMuted, fontSize = 11.sp)
-                    }
-                    if (diagnostics.size > 5) Text("و ${diagnostics.size - 5} ملاحظات أخرى في فحص القصة داخل الاستوديو.", color = BuildMuted, fontSize = 11.sp)
-                }
-            }
             Button(onClick = onExport, modifier = Modifier.fillMaxWidth(), enabled = diagnostics.none { it.isError }) {
                 Text("① تصدير حزمة القصة .storygame")
             }
