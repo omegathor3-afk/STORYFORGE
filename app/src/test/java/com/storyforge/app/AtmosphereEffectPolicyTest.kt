@@ -82,25 +82,25 @@ class AtmosphereEffectPolicyTest {
     fun editorAndStandalonePlayerKeepTheSameRainProfileContract() {
         assertEquals(
             RainEffectProfile(
-                distantDrops = 56,
-                midDrops = 30,
-                nearDrops = 12,
-                splashCount = 12,
-                driftDurationMillis = 7600,
-                opacityScale = 1.28f,
-                lengthScale = 1.2f
+                distantDrops = 68,
+                midDrops = 40,
+                nearDrops = 18,
+                splashCount = 16,
+                driftDurationMillis = 7000,
+                opacityScale = 1.5f,
+                lengthScale = 1.38f
             ),
             rainEffectProfile(setOf("rain"))
         )
         assertEquals(
             RainEffectProfile(
-                distantDrops = 88,
-                midDrops = 50,
-                nearDrops = 24,
-                splashCount = 20,
-                driftDurationMillis = 5200,
-                opacityScale = 1.55f,
-                lengthScale = 1.34f
+                distantDrops = 112,
+                midDrops = 72,
+                nearDrops = 32,
+                splashCount = 26,
+                driftDurationMillis = 4600,
+                opacityScale = 1.9f,
+                lengthScale = 1.62f
             ),
             rainEffectProfile(setOf("heavy_rain"))
         )
